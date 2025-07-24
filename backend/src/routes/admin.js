@@ -1,58 +1,32 @@
 // src/routes/admin.js
 const express = require('express');
+const multer = require('multer');
 const Admin = require('../models/Admin');
+const SuperAdmin = require('../models/SuperAdmin');
 const User = require('../models/User');
 const Task = require('../models/Task');
+
 const JobEntry = require('../models/JobEntry');
-const UserTask = require('../models/UserTask');
-const Activity = require('../models/Activity');
-const StageAssignment = require('../models/StageAssignment');
-const CustomField = require('../models/CustomField');
-const DispatchedJob = require('../models/DispatchedJob');
-const multer = require('multer');
-const activityService = require('../services/activityService');
-const emailService = require('../services/emailService');
-const jobService = require('../services/jobService');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        // Allow common file types
+        const allowedTypes = /jpeg|jpg|png|pdf|doc|docx|txt|xlsx|xls/;
+        const extname = allowedTypes.test(file.originalname.toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
 
-// Dashboard stats
-router.get('/dashboard-stats', async (req, res) => {
-    try {
-        let admin = await Admin.findOne();
-        if (!admin) {
-            admin = await Admin.create({
-                username: 'admin',
-                password: 'admin123',
-                email: 'planning@ashtavinayaka.com',
-                name: 'System Admin'
-            });
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Invalid file type'));
         }
-
-        const [totalUsers, totalTasks, pendingTasks, pendingApprovals] = await Promise.all([
-            User.countDocuments({ adminId: admin._id }),
-            Task.countDocuments({ adminId: admin._id }),
-            Task.countDocuments({
-                adminId: admin._id,
-                status: { $in: ['pending', 'in_progress'] }
-            }),
-            Task.countDocuments({
-                adminId: admin._id,
-                status: 'pending_approval'
-            })
-        ]);
-
-        res.json({
-            totalUsers,
-            totalTasks,
-            pendingTasks,
-            pendingApprovals
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
+
 
 // Notification count
 router.get('/notification-count', async (req, res) => {
@@ -177,16 +151,153 @@ router.delete('/users/:id', async (req, res) => {
     }
 });
 
-// Tasks management
+router.post('/tasks', upload.single('document'), async (req, res) => {
+    try {
+        let admin = await Admin.findOne();
+        let superAdmin = null;
+
+        // Check if current user is super admin
+        if (req.body.createdBy && req.body.createdBy.role === 'super_admin') {
+            superAdmin = await SuperAdmin.findById(req.body.createdBy.id);
+        }
+
+        if (!admin && !superAdmin) {
+            admin = await Admin.create({
+                username: 'admin',
+                password: 'admin123',
+                email: 'planning@ashtavinayaka.com',
+                name: 'System Admin'
+            });
+        }
+
+        const taskData = {
+            ...req.body,
+            adminId: admin ? admin._id : superAdmin._id,
+        };
+
+        // Handle multiple assignees
+        if (req.body.assignedToMultiple) {
+            const assignees = JSON.parse(req.body.assignedToMultiple);
+            taskData.visibleTo = assignees;
+            taskData.assignedTo = assignees[0]; // Primary assignee
+        }
+
+        // Handle middle level validation
+        if (req.body.middleLevelValidator) {
+            taskData.needsMiddleLevelValidation = true;
+            taskData.middleLevelValidationStatus = 'pending';
+        }
+
+        // Handle privacy settings
+        if (req.body.assignedBy === req.body.assignedTo) {
+            taskData.isPrivate = true;
+        }
+
+        if (superAdmin) {
+            taskData.isSuperAdminTask = true;
+        }
+
+        // Handle file upload
+        if (req.file) {
+            taskData.attachedDocument = {
+                filename: Date.now() + '_' + req.file.originalname,
+                originalName: req.file.originalname,
+                mimeType: req.file.mimetype,
+                size: req.file.size,
+                data: req.file.buffer
+            };
+        }
+
+        // Handle parent task grouping for job entries
+        if (req.body.soNumber && req.body.stage) {
+            // Find or create parent task
+            let parentTask = await Task.findOne({
+                soNumber: req.body.soNumber,
+                parentTask: null,
+                adminId: taskData.adminId
+            });
+
+            if (!parentTask) {
+                parentTask = new Task({
+                    title: `${req.body.soNumber} - Daily Job Tasks`,
+                    description: `Parent task for all tasks related to SO# ${req.body.soNumber}`,
+                    assignedTo: taskData.assignedTo,
+                    soNumber: req.body.soNumber,
+                    priority: 'medium',
+                    dueDate: taskData.dueDate,
+                    adminId: taskData.adminId,
+                    status: 'pending'
+                });
+                await parentTask.save();
+            }
+
+            taskData.parentTask = parentTask._id;
+            taskData.parentTaskName = parentTask.title;
+        }
+
+        const task = new Task(taskData);
+        await task.save();
+
+        // If multiple assignees, create individual tasks for each
+        if (req.body.assignedToMultiple && JSON.parse(req.body.assignedToMultiple).length > 1) {
+            const assignees = JSON.parse(req.body.assignedToMultiple);
+            const additionalTasks = [];
+
+            for (let i = 1; i < assignees.length; i++) {
+                const additionalTaskData = { ...taskData };
+                additionalTaskData.assignedTo = assignees[i];
+                additionalTaskData._id = undefined;
+
+                const additionalTask = new Task(additionalTaskData);
+                await additionalTask.save();
+                additionalTasks.push(additionalTask);
+            }
+        }
+
+        res.status(201).json({
+            success: true,
+            task,
+            message: 'Task created successfully!'
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Get tasks with enhanced filtering for privacy
 router.get('/tasks', async (req, res) => {
     try {
         let admin = await Admin.findOne();
+        const currentUser = req.query.currentUser ? JSON.parse(req.query.currentUser) : null;
+
         if (!admin) {
             return res.json([]);
         }
 
-        const { filter, status, priority, completed } = req.query;
         let query = { adminId: admin._id };
+
+        // Apply privacy filters
+        if (currentUser) {
+            if (currentUser.role === 'super_admin') {
+                // Super admin sees all tasks
+            } else if (currentUser.role === 'admin') {
+                // Admin doesn't see super admin tasks or private tasks
+                query.$and = [
+                    { isSuperAdminTask: { $ne: true } },
+                    { isPrivate: { $ne: true } }
+                ];
+            } else {
+                // Regular users only see tasks assigned to them or tasks they created
+                query.$or = [
+                    { assignedTo: currentUser.id },
+                    { assignedBy: currentUser.id },
+                    { visibleTo: currentUser.id }
+                ];
+            }
+        }
+
+        // Handle existing filters
+        const { filter, status, priority, completed } = req.query;
 
         if (completed === 'true') {
             query.status = 'completed';
@@ -197,9 +308,9 @@ router.get('/tasks', async (req, res) => {
         if (status) {
             if (status === 'overdue') {
                 const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                today.setHours(23, 59, 59, 999); // End of today
                 query.status = { $in: ['pending', 'in_progress'] };
-                query.dueDate = { $lt: new Date() };
+                query.dueDate = { $lt: today };
             } else {
                 query.status = status;
             }
@@ -209,23 +320,10 @@ router.get('/tasks', async (req, res) => {
             query.priority = priority;
         }
 
-        if (filter) {
-            switch (filter) {
-                case 'pending':
-                    query.status = { $in: ['pending', 'in_progress'] };
-                    break;
-                case 'completed':
-                    query.status = 'completed';
-                    break;
-                case 'overdue':
-                    query.status = { $in: ['pending', 'in_progress'] };
-                    query.dueDate = { $lt: new Date() };
-                    break;
-            }
-        }
-
         const tasks = await Task.find(query)
             .populate('assignedTo', 'name')
+            .populate('middleLevelValidator', 'name')
+            .populate('parentTask', 'title')
             .sort({
                 status: 1,
                 dueDate: 1,
@@ -234,45 +332,11 @@ router.get('/tasks', async (req, res) => {
 
         const tasksWithNames = tasks.map(task => ({
             ...task.toObject(),
-            assignedToName: task.assignedTo ? task.assignedTo.name : 'Unassigned'
+            assignedToName: task.assignedTo ? task.assignedTo.name : 'Unassigned',
+            middleLevelValidatorName: task.middleLevelValidator ? task.middleLevelValidator.name : null
         }));
 
         res.json(tasksWithNames);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
-
-router.post('/tasks', async (req, res) => {
-    try {
-        let admin = await Admin.findOne();
-        if (!admin) {
-            admin = await Admin.create({
-                username: 'admin',
-                password: 'admin123',
-                email: 'planning@ashtavinayaka.com',
-                name: 'System Admin'
-            });
-        }
-
-        const assignedUser = await User.findById(req.body.assignedTo);
-        const taskData = {
-            ...req.body,
-            adminId: admin._id,
-            assignedToName: assignedUser ? assignedUser.name : 'Unassigned'
-        };
-
-        const task = new Task(taskData);
-        await task.save();
-        await activityService.logActivity(
-            admin._id,
-            'create',
-            'task',
-            task._id,
-            `Created task: ${task.title} for ${task.assignedToName}`
-        );
-
-        res.status(201).json(task);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -362,32 +426,6 @@ router.delete('/tasks/:id', async (req, res) => {
 });
 
 // Completion requests
-router.get('/completion-requests', async (req, res) => {
-    try {
-        let admin = await Admin.findOne();
-        if (!admin) {
-            return res.json([]);
-        }
-
-        const completionRequests = await Task.find({
-            adminId: admin._id,
-            status: 'pending_approval'
-        })
-            .populate('assignedTo', 'name email')
-            .populate('requestedById', 'name email')
-            .sort({ completionRequestDate: -1 });
-
-        const requestsWithNames = completionRequests.map(task => ({
-            ...task.toObject(),
-            assignedToName: task.assignedTo ? task.assignedTo.name : 'Unassigned'
-        }));
-
-        res.json(requestsWithNames);
-    } catch (error) {
-        console.error('Error loading completion requests:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
 
 router.patch('/tasks/:id/approve-completion', async (req, res) => {
     try {
@@ -507,58 +545,6 @@ router.patch('/tasks/:id/reject-completion', async (req, res) => {
     }
 });
 
-// User assigned tasks (team collaboration features)
-router.get('/user-assigned-tasks', async (req, res) => {
-    try {
-        let admin = await Admin.findOne();
-        if (!admin) {
-            return res.json([]);
-        }
-
-        const { status, assignedBy, assignedTo } = req.query;
-        let query = {};
-
-        if (status && status !== '') {
-            if (status === 'overdue') {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                query.status = { $in: ['pending', 'in_progress'] };
-                query.dueDate = { $lt: today };
-            } else {
-                query.status = status;
-            }
-        }
-
-        const userTasks = await UserTask.find(query)
-            .populate('assignedTo', 'name email')
-            .populate('assignedBy', 'name email')
-            .sort({ createdAt: -1 });
-
-        let filteredTasks = userTasks;
-
-        if (assignedBy && assignedBy !== '') {
-            filteredTasks = filteredTasks.filter(task =>
-                task.assignedBy && task.assignedBy.name === assignedBy
-            );
-        }
-
-        if (assignedTo && assignedTo !== '') {
-            filteredTasks = filteredTasks.filter(task =>
-                task.assignedTo && task.assignedTo.name === assignedTo
-            );
-        }
-
-        const tasksWithNames = filteredTasks.map(task => ({
-            ...task.toObject(),
-            assignedToName: task.assignedTo ? task.assignedTo.name : 'Unassigned',
-            assignedByName: task.assignedBy ? task.assignedBy.name : 'Unknown'
-        }));
-
-        res.json(tasksWithNames);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
 
 router.get('/user-tasks/:id', async (req, res) => {
     try {
@@ -579,6 +565,295 @@ router.get('/user-tasks/:id', async (req, res) => {
         res.json(taskWithNames);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// backend/src/routes/admin.js - Fix missing data issues
+
+// Enhanced completion requests route
+router.get('/completion-requests', async (req, res) => {
+    try {
+        console.log('Loading completion requests...');
+
+        let admin = await Admin.findOne();
+        if (!admin) {
+            console.log('No admin found, creating default admin');
+            admin = await Admin.create({
+                username: 'admin',
+                password: 'admin123',
+                email: 'planning@ashtavinayaka.com',
+                name: 'System Admin'
+            });
+        }
+
+        // Get all tasks with pending_approval status
+        const completionRequests = await Task.find({
+            adminId: admin._id,
+            status: 'pending_approval'
+        })
+            .populate('assignedTo', 'name email username')
+            .populate('requestedById', 'name email username')
+            .sort({ completionRequestDate: -1 });
+
+        console.log(`Found ${completionRequests.length} completion requests`);
+
+        const requestsWithNames = completionRequests.map(task => ({
+            ...task.toObject(),
+            assignedToName: task.assignedTo ? task.assignedTo.name : 'Unassigned'
+        }));
+
+        res.json(requestsWithNames);
+    } catch (error) {
+        console.error('Error loading completion requests:', error);
+        res.status(500).json({
+            message: 'Server error loading completion requests',
+            error: error.message
+        });
+    }
+});
+
+// Enhanced dispatched jobs route with better error handling
+router.get('/dispatched-jobs', async (req, res) => {
+    try {
+        console.log('Loading dispatched jobs...');
+
+        let admin = await Admin.findOne();
+        if (!admin) {
+            console.log('No admin found for dispatched jobs');
+            return res.json([]);
+        }
+
+        const dispatchedJobs = await DispatchedJob.find({ adminId: admin._id })
+            .sort({ dispatchedAt: -1 })
+            .limit(100); // Limit to prevent memory issues
+
+        console.log(`Found ${dispatchedJobs.length} dispatched jobs`);
+        res.json(dispatchedJobs);
+    } catch (error) {
+        console.error('Error loading dispatched jobs:', error);
+        res.status(500).json({
+            message: 'Server error loading dispatched jobs',
+            error: error.message
+        });
+    }
+});
+
+// Enhanced job entries route with better debugging
+router.get('/job-entries', async (req, res) => {
+    try {
+        console.log('Loading job entries with filters:', req.query);
+
+        let admin = await Admin.findOne();
+        if (!admin) {
+            console.log('No admin found for job entries');
+            return res.json([]);
+        }
+
+        const { month, team, status, customer } = req.query;
+        let query = { adminId: admin._id };
+
+        if (month && month.trim() !== '') {
+            query.month = { $regex: month.trim(), $options: 'i' };
+        }
+
+        if (team && team.trim() !== '') {
+            query.team = team.trim();
+        }
+
+        if (status && status.trim() !== '') {
+            query.status = status.trim();
+        }
+
+        if (customer && customer.trim() !== '') {
+            query.customer = { $regex: customer.trim(), $options: 'i' };
+        }
+
+        console.log('Job entries query:', query);
+
+        const entries = await JobEntry.find(query)
+            .sort({ createdAt: -1 })
+            .limit(500); // Prevent memory issues
+
+        console.log(`Found ${entries.length} job entries`);
+
+        // Fix the assignedUsername issue
+        const fixedEntries = entries.map(entry => {
+            const entryObj = entry.toObject();
+
+            // Fix any entries still showing 'jpg' 
+            if (entryObj.assignedUsername === 'jpg') {
+                entryObj.assignedUsername = '';
+            }
+
+            return entryObj;
+        });
+
+        res.json(fixedEntries);
+    } catch (error) {
+        console.error('Error loading job entries:', error);
+        res.status(500).json({
+            message: 'Server error loading job entries',
+            error: error.message
+        });
+    }
+});
+
+// Enhanced user assigned tasks route
+router.get('/user-assigned-tasks', async (req, res) => {
+    try {
+        console.log('Loading user assigned tasks with filters:', req.query);
+
+        let admin = await Admin.findOne();
+        if (!admin) {
+            console.log('No admin found for user assigned tasks');
+            return res.json([]);
+        }
+
+        const { status, assignedBy, assignedTo } = req.query;
+        let query = {};
+
+        if (status && status !== '') {
+            if (status === 'overdue') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                query.status = { $in: ['pending', 'in_progress'] };
+                query.dueDate = { $lt: today };
+            } else {
+                query.status = status;
+            }
+        }
+
+        console.log('User tasks query:', query);
+
+        const userTasks = await UserTask.find(query)
+            .populate('assignedTo', 'name email username')
+            .populate('assignedBy', 'name email username')
+            .sort({ createdAt: -1 })
+            .limit(200);
+
+        console.log(`Found ${userTasks.length} user tasks before filtering`);
+
+        let filteredTasks = userTasks;
+
+        if (assignedBy && assignedBy !== '') {
+            filteredTasks = filteredTasks.filter(task =>
+                task.assignedBy && task.assignedBy.name === assignedBy
+            );
+        }
+
+        if (assignedTo && assignedTo !== '') {
+            filteredTasks = filteredTasks.filter(task =>
+                task.assignedTo && task.assignedTo.name === assignedTo
+            );
+        }
+
+        console.log(`Filtered to ${filteredTasks.length} user tasks`);
+
+        const tasksWithNames = filteredTasks.map(task => ({
+            ...task.toObject(),
+            assignedToName: task.assignedTo ? task.assignedTo.name : 'Unassigned',
+            assignedByName: task.assignedBy ? task.assignedBy.name : 'Unknown'
+        }));
+
+        res.json(tasksWithNames);
+    } catch (error) {
+        console.error('Error loading user assigned tasks:', error);
+        res.status(500).json({
+            message: 'Server error loading user assigned tasks',
+            error: error.message
+        });
+    }
+});
+
+// Enhanced dashboard stats with better error handling
+router.get('/dashboard-stats', async (req, res) => {
+    try {
+        let admin = await Admin.findOne();
+        if (!admin) {
+            admin = await Admin.create({
+                username: 'admin',
+                password: 'admin123',
+                email: 'planning@ashtavinayaka.com',
+                name: 'System Admin'
+            });
+        }
+
+        const [totalUsers, totalTasks, pendingTasks, pendingApprovals] = await Promise.all([
+            User.countDocuments({ adminId: admin._id }),
+            Task.countDocuments({ adminId: admin._id }),
+            Task.countDocuments({
+                adminId: admin._id,
+                status: { $in: ['pending', 'in_progress'] }
+            }),
+            Task.countDocuments({
+                adminId: admin._id,
+                status: 'pending_approval'
+            })
+        ]);
+
+        console.log('Dashboard stats:', { totalUsers, totalTasks, pendingTasks, pendingApprovals });
+
+        res.json({
+            totalUsers,
+            totalTasks,
+            pendingTasks,
+            pendingApprovals
+        });
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+        res.status(500).json({
+            message: 'Server error loading dashboard stats',
+            error: error.message
+        });
+    }
+});
+
+// Database cleanup utility route (run once to fix data)
+router.post('/cleanup-database', async (req, res) => {
+    try {
+        console.log('Starting database cleanup...');
+
+        // Fix assignedUsername 'jpg' issue
+        const jpgFix = await JobEntry.updateMany(
+            { assignedUsername: 'jpg' },
+            { $set: { assignedUsername: '' } }
+        );
+
+        console.log(`Fixed ${jpgFix.modifiedCount} job entries with 'jpg' assignment`);
+
+        // Remove orphaned tasks (tasks without valid assignedTo)
+        const orphanedTasks = await Task.deleteMany({
+            assignedTo: { $exists: false }
+        });
+
+        console.log(`Removed ${orphanedTasks.deletedCount} orphaned tasks`);
+
+        // Fix missing adminId references
+        let admin = await Admin.findOne();
+        if (admin) {
+            const noAdminTasks = await Task.updateMany(
+                { adminId: { $exists: false } },
+                { $set: { adminId: admin._id } }
+            );
+
+            console.log(`Fixed ${noAdminTasks.modifiedCount} tasks without adminId`);
+        }
+
+        res.json({
+            success: true,
+            message: 'Database cleanup completed',
+            results: {
+                jpgFixCount: jpgFix.modifiedCount,
+                orphanedTasksRemoved: orphanedTasks.deletedCount,
+                adminIdFixed: noAdminTasks ? noAdminTasks.modifiedCount : 0
+            }
+        });
+    } catch (error) {
+        console.error('Database cleanup error:', error);
+        res.status(500).json({
+            message: 'Database cleanup failed',
+            error: error.message
+        });
     }
 });
 
@@ -620,6 +895,132 @@ router.patch('/user-tasks/:id/complete', async (req, res) => {
         });
     } catch (error) {
         console.error('Admin user task completion error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Middle level validation approval
+router.patch('/tasks/:id/middle-validation', async (req, res) => {
+    try {
+        const { status, remarks } = req.body;
+        const currentUser = req.body.validatedBy;
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        if (!task.needsMiddleLevelValidation) {
+            return res.status(400).json({ message: 'Task does not require middle level validation' });
+        }
+
+        const updateData = {
+            middleLevelValidationStatus: status,
+            middleLevelValidatedBy: currentUser,
+            middleLevelValidatedAt: new Date(),
+            remarks: remarks
+        };
+
+        if (status === 'approved') {
+            updateData.status = 'pending_approval'; // Goes to admin for final approval
+        } else if (status === 'rejected') {
+            updateData.status = 'in_progress'; // Back to assignee
+        }
+
+        const updatedTask = await Task.findByIdAndUpdate(req.params.id, updateData, { new: true });
+
+        res.json({
+            success: true,
+            task: updatedTask,
+            message: `Task ${status} by middle level validator`
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Request task delay
+router.post('/tasks/:id/request-delay', async (req, res) => {
+    try {
+        const { requestedDueDate, reason, requestedBy } = req.body;
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        const delayRequest = {
+            requestedBy: requestedBy.id,
+            requestedByName: requestedBy.name,
+            currentDueDate: task.dueDate,
+            requestedDueDate: new Date(requestedDueDate),
+            reason: reason,
+            status: 'pending'
+        };
+
+        task.delayRequests.push(delayRequest);
+        await task.save();
+
+        res.json({
+            success: true,
+            message: 'Delay request submitted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Approve/Reject delay request
+router.patch('/tasks/:id/delay-request/:requestId', async (req, res) => {
+    try {
+        const { status, reviewComments, reviewedBy } = req.body;
+
+        const task = await Task.findById(req.params.id);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        const delayRequest = task.delayRequests.id(req.params.requestId);
+        if (!delayRequest) {
+            return res.status(404).json({ message: 'Delay request not found' });
+        }
+
+        delayRequest.status = status;
+        delayRequest.reviewedBy = reviewedBy;
+        delayRequest.reviewedAt = new Date();
+        delayRequest.reviewComments = reviewComments;
+
+        if (status === 'approved') {
+            task.dueDate = delayRequest.requestedDueDate;
+        }
+
+        await task.save();
+
+        res.json({
+            success: true,
+            message: `Delay request ${status}`,
+            task
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Download task document
+router.get('/tasks/:id/document', async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task || !task.attachedDocument) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+
+        res.set({
+            'Content-Type': task.attachedDocument.mimeType,
+            'Content-Disposition': `attachment; filename="${task.attachedDocument.originalName}"`
+        });
+
+        res.send(task.attachedDocument.data);
+    } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -723,41 +1124,6 @@ router.get('/tasks-report', async (req, res) => {
     }
 });
 
-// Job entries
-router.get('/job-entries', async (req, res) => {
-    try {
-        let admin = await Admin.findOne();
-        if (!admin) {
-            return res.json([]);
-        }
-
-        const { month, team, status, customer } = req.query;
-        let query = { adminId: admin._id };
-
-        if (month && month.trim() !== '') {
-            query.month = { $regex: month.trim(), $options: 'i' };
-        }
-
-        if (team && team.trim() !== '') {
-            query.team = team.trim();
-        }
-
-        if (status && status.trim() !== '') {
-            query.status = status.trim();
-        }
-
-        if (customer && customer.trim() !== '') {
-            query.customer = { $regex: customer.trim(), $options: 'i' };
-        }
-
-        const entries = await JobEntry.find(query)
-            .sort({ createdAt: -1 });
-
-        res.json(entries);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
 
 router.post('/job-entries/manual', async (req, res) => {
     try {
@@ -1154,22 +1520,26 @@ router.get('/job-entries/count', async (req, res) => {
 
 router.delete('/job-entries/:id', async (req, res) => {
     try {
-        const entry = await JobEntry.findByIdAndDelete(req.params.id);
+        const entry = await JobEntry.findById(req.params.id);
         if (!entry) {
             return res.status(404).json({ message: 'Job entry not found' });
         }
 
-        await activityService.logActivity(
-            entry.adminId,
-            'delete',
-            'job_entry',
-            entry._id,
-            `Deleted job entry: ${entry.soNumber}`
-        );
+        // Delete all related tasks
+        await Task.deleteMany({
+            $or: [
+                { description: { $regex: `SO#: ${entry.soNumber}`, $options: 'i' } },
+                { description: { $regex: `S.O#: ${entry.soNumber}`, $options: 'i' } },
+                { title: { $regex: entry.soNumber, $options: 'i' } },
+                { soNumber: entry.soNumber }
+            ]
+        });
+
+        await JobEntry.findByIdAndDelete(req.params.id);
 
         res.json({
             success: true,
-            message: 'Job entry deleted successfully'
+            message: 'Job entry and related tasks deleted successfully'
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -1335,22 +1705,7 @@ router.get('/department-stats', async (req, res) => {
     }
 });
 
-// Dispatched jobs
-router.get('/dispatched-jobs', async (req, res) => {
-    try {
-        let admin = await Admin.findOne();
-        if (!admin) {
-            return res.json([]);
-        }
 
-        const dispatchedJobs = await DispatchedJob.find({ adminId: admin._id })
-            .sort({ dispatchedAt: -1 });
-
-        res.json(dispatchedJobs);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
 
 router.get('/dispatched-jobs-report', async (req, res) => {
     try {

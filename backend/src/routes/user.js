@@ -53,18 +53,57 @@ router.get('/:id/stats', async (req, res) => {
     }
 });
 
-// Get user tasks
 router.get('/:id/tasks', async (req, res) => {
     try {
         const userId = req.params.id;
-        const tasks = await Task.find({ assignedTo: userId })
+        const currentUser = req.query.currentUser ? JSON.parse(req.query.currentUser) : null;
+
+        let query = { assignedTo: userId };
+
+        // Apply privacy filters
+        if (currentUser && currentUser.role !== 'super_admin') {
+            if (currentUser.role === 'admin') {
+                query.isSuperAdminTask = { $ne: true };
+            } else if (currentUser.id !== userId) {
+                // User can only see their own tasks unless they created the task
+                query.$or = [
+                    { assignedTo: userId, isPrivate: { $ne: true } },
+                    { assignedBy: currentUser.id }
+                ];
+            }
+        }
+
+        const tasks = await Task.find(query)
+            .populate('parentTask', 'title')
             .sort({ dueDate: 1 });
 
-        res.json(tasks);
+        // FIXED: Proper overdue calculation
+        const tasksWithStatus = tasks.map(task => {
+            const taskObj = task.toObject();
+
+            if (task.status === 'pending' || task.status === 'in_progress') {
+                const today = new Date();
+                const dueDate = new Date(task.dueDate);
+
+                // Set to start of day for comparison
+                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+                // Task is overdue only if due date has passed (next day)
+                if (dueDateStart < todayStart) {
+                    taskObj.isOverdue = true;
+                }
+            }
+
+            return taskObj;
+        });
+
+        res.json(tasksWithStatus);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
+
 
 // Get user progress
 router.get('/:id/progress', async (req, res) => {
@@ -103,47 +142,100 @@ router.get('/:id/progress', async (req, res) => {
 });
 
 // User task management
-router.post('/user-tasks', async (req, res) => {
+router.post('/user-tasks', upload.single('document'), async (req, res) => {
     try {
-        const { assignedBy, ...taskData } = req.body;
+        const { assignedBy, assignedToMultiple, ...taskData } = req.body;
 
-        const [assigningUser, assignedUser] = await Promise.all([
-            User.findById(assignedBy),
-            User.findById(taskData.assignedTo)
-        ]);
-
+        const assigningUser = await User.findById(assignedBy);
         if (!assigningUser) {
             return res.status(404).json({ message: 'Assigning user not found' });
         }
 
-        if (!assignedUser) {
-            return res.status(404).json({ message: 'Assigned user not found' });
-        }
+        // Handle multiple assignees
+        const assignees = assignedToMultiple ? JSON.parse(assignedToMultiple) : [taskData.assignedTo];
+        const createdTasks = [];
 
-        const fullTaskData = {
-            ...taskData,
-            assignedBy: assigningUser._id,
-            assignedByName: assigningUser.name,
-            assignedToName: assignedUser.name
-        };
+        for (const assigneeId of assignees) {
+            const assignedUser = await User.findById(assigneeId);
+            if (!assignedUser) {
+                continue; // Skip invalid users
+            }
 
-        const userTask = new UserTask(fullTaskData);
-        await userTask.save();
+            const fullTaskData = {
+                ...taskData,
+                assignedTo: assigneeId,
+                assignedBy: assigningUser._id,
+                assignedByName: assigningUser.name,
+                assignedToName: assignedUser.name
+            };
 
-        if (assignedUser.email) {
-            await emailService.sendUserTaskAssignmentEmail(assignedUser, assigningUser, userTask);
+            // Handle privacy for self-assigned tasks
+            if (assigningUser._id.toString() === assigneeId.toString()) {
+                fullTaskData.isPrivate = true;
+            }
+
+            // Handle document upload
+            if (req.file) {
+                fullTaskData.attachedDocument = {
+                    filename: Date.now() + '_' + req.file.originalname,
+                    originalName: req.file.originalname,
+                    mimeType: req.file.mimetype,
+                    size: req.file.size,
+                    data: req.file.buffer
+                };
+            }
+
+            const userTask = new UserTask(fullTaskData);
+            await userTask.save();
+            createdTasks.push(userTask);
+
+            // Send email notification only if not self-assigned
+            if (assigningUser._id.toString() !== assigneeId.toString() && assignedUser.email) {
+                await emailService.sendUserTaskAssignmentEmail(assignedUser, assigningUser, userTask);
+            }
         }
 
         res.status(201).json({
             success: true,
-            userTask,
-            message: 'Task assigned successfully!'
+            tasks: createdTasks,
+            message: `Task(s) assigned successfully to ${createdTasks.length} user(s)!`
         });
     } catch (error) {
         console.error('Error creating user task:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
+
+// Get parent tasks for grouping
+router.get('/parent-tasks', async (req, res) => {
+    try {
+        const { soNumber } = req.query;
+
+        let query = { parentTask: null };
+        if (soNumber) {
+            query.soNumber = soNumber;
+        }
+
+        const parentTasks = await Task.find(query)
+            .select('_id title soNumber stage')
+            .sort({ soNumber: 1, stage: 1 });
+
+        // Group by SO number
+        const groupedTasks = parentTasks.reduce((groups, task) => {
+            const key = task.soNumber || 'general';
+            if (!groups[key]) {
+                groups[key] = [];
+            }
+            groups[key].push(task);
+            return groups;
+        }, {});
+
+        res.json(groupedTasks);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
 
 // Get tasks assigned by a specific user
 router.get('/:id/assigned-user-tasks', async (req, res) => {
@@ -250,11 +342,22 @@ router.patch('/user-tasks/:id/complete', async (req, res) => {
         }
 
         const completedAt = new Date();
+
+        const dueDate = new Date(userTask.dueDate);
+        const completedDate = new Date(completedAt);
+
+        // Set both dates to start of day for proper comparison
+        const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        const completedDateStart = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
+
+        // Task is on time if completed on or before due date
+        const isOnTime = completedDateStart <= dueDateStart;
+
         const updateData = {
             status: 'completed',
             progress: 100,
             completedAt: completedAt,
-            isOnTime: completedAt <= new Date(userTask.dueDate),
+            isOnTime: isOnTime,
             updatedAt: new Date()
         };
 
@@ -280,6 +383,81 @@ router.patch('/user-tasks/:id/complete', async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
+
+router.patch('/tasks/:id/complete', async (req, res) => {
+    try {
+        const taskId = req.params.id;
+        const { completedBy } = req.body;
+
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        const completedAt = new Date();
+
+        // FIXED: Proper date comparison for same day completion
+        const dueDate = new Date(task.dueDate);
+        const completedDate = new Date(completedAt);
+
+        // Set both dates to start of day for proper comparison
+        const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        const completedDateStart = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
+
+        // Task is on time if completed on or before due date
+        const isOnTime = completedDateStart <= dueDateStart;
+
+        let updateData = {
+            progress: 100,
+            completedAt: completedAt,
+            isOnTime: isOnTime,
+            updatedAt: new Date()
+        };
+
+        // Handle middle level validation
+        if (task.needsMiddleLevelValidation) {
+            updateData.status = 'pending_middle_validation';
+            updateData.completionRequestDate = new Date();
+            updateData.requestedBy = completedBy;
+        } else {
+            updateData.status = 'pending_approval';
+            updateData.completionRequestDate = new Date();
+            updateData.requestedBy = completedBy;
+        }
+
+        const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true })
+            .populate('assignedTo', 'name email')
+            .populate('middleLevelValidator', 'name email');
+
+        // Send appropriate notifications
+        if (task.needsMiddleLevelValidation && updatedTask.middleLevelValidator) {
+            // Send to middle level validator
+            await emailService.sendMiddleLevelValidationRequest(
+                updatedTask.middleLevelValidator,
+                updatedTask.assignedTo,
+                updatedTask
+            );
+        } else {
+            // Send to admin for approval
+            const admin = await Admin.findById(task.adminId);
+            if (admin) {
+                await emailService.sendCompletionRequestEmail(admin, updatedTask.assignedTo, updatedTask);
+            }
+        }
+
+        res.json({
+            success: true,
+            task: updatedTask,
+            message: task.needsMiddleLevelValidation
+                ? 'Task sent for middle level validation!'
+                : 'Task completion request sent to admin!'
+        });
+    } catch (error) {
+        console.error('Task completion error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
 
 // Delete user task
 router.delete('/user-tasks/:id', async (req, res) => {

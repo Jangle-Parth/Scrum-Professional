@@ -16,6 +16,19 @@ let filteredUserTasks = [];
 let allJobEntries = [];
 let stageAssignments = [];
 
+let currentFilters = {
+    taskFilter: '',
+    completedTaskFilter: '',
+    userTaskStatusFilter: 'pending',
+    userTaskSortFilter: 'due_date_asc',
+    jobFilters: {
+        month: '',
+        team: '',
+        status: '',
+        customer: ''
+    }
+};
+
 // Initialize Application
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('taskFilter').addEventListener('change', filterTasks);
@@ -172,20 +185,7 @@ function updateJobTrackingHTML() {
 
 
 
-// Check if user is already authenticated
-function checkAuthStatus() {
-    const savedAuth = sessionStorage.getItem('scrumflow_auth');
-    if (savedAuth) {
-        const authData = JSON.parse(savedAuth);
-        if (authData.type === 'admin') {
-            currentAdmin = authData.user;
-            showAdminDashboard();
-        } else {
-            currentUser = authData.user;
-            showUserDashboard();
-        }
-    }
-}
+
 
 async function handleJobStatusSubmit(e) {
     e.preventDefault();
@@ -342,17 +342,8 @@ function setupEventListeners() {
     }, 1000);
 }
 
-async function loadDispatchedJobs() {
-    try {
-        dispatchedJobsData = await apiCall('/admin/dispatched-jobs');
-        renderDispatchedJobs(dispatchedJobsData);
-        updateDispatchedJobsStats(dispatchedJobsData);
-    } catch (error) {
-        console.error('Error loading dispatched jobs:', error);
-        document.querySelector('#dispatchedJobsTable tbody').innerHTML =
-            '<tr><td colspan="7" style="text-align: center; color: #666; padding: 40px;">Error loading dispatched jobs</td></tr>';
-    }
-}
+
+
 
 // Render dispatched jobs table
 function renderDispatchedJobs(jobs) {
@@ -699,29 +690,7 @@ async function loadUserTaskStats() {
 }
 
 
-async function loadSectionData(section) {
-    switch (section) {
-        case 'overview':
-            await loadStats();
-            await loadRecentActivity();
-            break;
-        case 'users':
-            await loadUsers();
-            break;
-        case 'tasks':
-            await loadTasks();
-            break;
-        case 'pending':
-            await loadPendingTasks();
-            break;
-        case 'completion-requests':
-            await loadCompletionRequests();
-            break;
-        case 'analytics':
-            await loadAnalytics();
-            break;
-    }
-}
+
 
 async function loadUserSectionData(section) {
     switch (section) {
@@ -1175,26 +1144,6 @@ async function loadUserTaskForEdit(taskId) {
 }
 
 
-// API Functions
-async function apiCall(endpoint, options = {}) {
-    const defaultOptions = {
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    };
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...defaultOptions,
-        ...options
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'API call failed');
-    }
-
-    return response.json();
-}
 
 // Stats Loading
 async function loadStats() {
@@ -1546,45 +1495,7 @@ async function requestTaskCompletion(taskId) {
     openCompletionRequestModal(taskId);
 }
 
-async function loadCompletionRequests() {
-    try {
-        const requests = await apiCall('/admin/completion-requests');
-        const tbody = document.querySelector('#completionRequestsTable tbody');
 
-        if (requests.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">No pending requests</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = requests.map(task => `
-                    <tr>
-                        <td>
-                            <strong>${task.title}</strong><br>
-                            <small style="color: #666;">${task.description || ''}</small>
-                        </td>
-                        <td>${task.assignedToName || 'Unknown'}</td>
-                        <td>${new Date(task.completionRequestDate).toLocaleDateString()}</td>
-                        <td>${new Date(task.dueDate).toLocaleDateString()}</td>
-                        <td>
-                            <span class="priority-badge priority-${task.priority}">
-                                ${task.priority}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="action-btn btn-complete" onclick="approveTaskCompletion('${task._id}')" title="Approve">
-                                <i class="fas fa-check"></i> Approve
-                            </button>
-                            <button class="action-btn btn-delete" onclick="rejectTaskCompletion('${task._id}')" title="Reject">
-                                <i class="fas fa-times"></i> Reject
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-    } catch (error) {
-        console.error('Error loading completion requests:', error);
-        document.querySelector('#completionRequestsTable tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">Error loading requests</td></tr>';
-    }
-}
 async function approveTaskCompletion(taskId) {
     if (confirm('Are you sure you want to approve this task completion?')) {
         try {
@@ -1633,22 +1544,388 @@ async function loadUserTasks() {
     }
 }
 
-function filterUserTasks() {
-    const statusFilter = document.getElementById('userTaskStatusFilter').value;
-    const sortFilter = document.getElementById('userTaskSortFilter').value;
 
-    // Apply status filter
-    filteredUserTasks = applyUserTaskStatusFilter(allUserTasks, statusFilter);
+// Request task delay
+async function requestTaskDelay(taskId) {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content glass-dark">
+            <div class="modal-header">
+                <h3>Request Task Delay</h3>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+            </div>
+            <form id="delayRequestForm">
+                <div class="form-group">
+                    <label for="requestedDueDate">New Due Date</label>
+                    <input type="date" id="requestedDueDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="delayReason">Reason for Delay</label>
+                    <textarea id="delayReason" class="form-control" rows="3" required 
+                              placeholder="Please provide a valid reason for the delay request..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-clock"></i> Submit Delay Request
+                </button>
+            </form>
+        </div>
+    `;
 
-    // Apply sorting
-    filteredUserTasks = applyUserTaskSorting(filteredUserTasks, sortFilter);
+    document.body.appendChild(modal);
 
-    // Render filtered and sorted tasks
-    renderUserTasks(filteredUserTasks);
+    document.getElementById('delayRequestForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    // Update filter info
-    updateUserTaskFilterInfo(statusFilter, filteredUserTasks.length, allUserTasks.length);
+        const requestData = {
+            requestedDueDate: document.getElementById('requestedDueDate').value,
+            reason: document.getElementById('delayReason').value,
+            requestedBy: currentUser || currentAdmin
+        };
+
+        try {
+            const response = await apiCall(`/admin/tasks/${taskId}/request-delay`, {
+                method: 'POST',
+                body: JSON.stringify(requestData)
+            });
+
+            if (response.success) {
+                showSuccessMessage('Delay request submitted successfully!');
+                modal.remove();
+                await loadUserTasks();
+            }
+        } catch (error) {
+            showErrorMessage(error.message);
+        }
+    });
 }
+
+// Approve/Reject delay request
+async function handleDelayRequest(taskId, requestId, action) {
+    const reason = action === 'rejected' ?
+        prompt('Please provide a reason for rejection:') :
+        prompt('Any comments for approval (optional):') || '';
+
+    if (action === 'rejected' && !reason) {
+        showErrorMessage('Reason is required for rejection');
+        return;
+    }
+
+    try {
+        const response = await apiCall(`/admin/tasks/${taskId}/delay-request/${requestId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                status: action,
+                reviewComments: reason,
+                reviewedBy: (currentAdmin || currentUser).name
+            })
+        });
+
+        if (response.success) {
+            showSuccessMessage(`Delay request ${action} successfully!`);
+            await loadTasks();
+        }
+    } catch (error) {
+        showErrorMessage(error.message);
+    }
+}
+
+// Middle level validation approval
+async function handleMiddleLevelValidation(taskId, action) {
+    const remarks = prompt(`Please provide remarks for ${action}:`);
+    if (!remarks && action === 'rejected') {
+        showErrorMessage('Remarks are required for rejection');
+        return;
+    }
+
+    try {
+        const response = await apiCall(`/admin/tasks/${taskId}/middle-validation`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                status: action,
+                remarks: remarks,
+                validatedBy: (currentUser || currentAdmin).name
+            })
+        });
+
+        if (response.success) {
+            showSuccessMessage(`Task ${action} by middle level validator!`);
+            await loadTasks();
+        }
+    } catch (error) {
+        showErrorMessage(error.message);
+    }
+}
+
+// Download task document
+async function downloadTaskDocument(taskId, filename) {
+    try {
+        // Show loading message
+        showLoadingMessage('Downloading document...');
+
+        const response = await fetch(`${API_BASE_URL}/admin/tasks/${taskId}/document`);
+
+        if (response.ok) {
+            const blob = await response.blob();
+
+            // Check if blob is valid and not empty
+            if (blob.size === 0) {
+                throw new Error('Document is empty or corrupted');
+            }
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename || `document_${taskId}`;
+            a.style.display = 'none'; // Hide the link element
+
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
+
+            hideLoadingMessage();
+            showSuccessMessage(`Document "${filename}" downloaded successfully!`);
+
+        } else {
+            // Handle different error status codes
+            let errorMessage;
+
+            switch (response.status) {
+                case 404:
+                    errorMessage = 'Document not found. It may have been deleted or never uploaded.';
+                    break;
+                case 403:
+                    errorMessage = 'You do not have permission to download this document.';
+                    break;
+                case 401:
+                    errorMessage = 'Authentication required. Please login again.';
+                    break;
+                case 500:
+                    errorMessage = 'Server error occurred while downloading the document.';
+                    break;
+                default:
+                    errorMessage = `Failed to download document. Server returned status: ${response.status}`;
+            }
+
+            throw new Error(errorMessage);
+        }
+
+    } catch (error) {
+        hideLoadingMessage();
+        console.error('Error downloading document:', error);
+
+        // Show user-friendly error message
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            showErrorMessage('Network error: Unable to connect to server. Please check your internet connection.');
+        } else if (error.message.includes('aborted')) {
+            showErrorMessage('Download was cancelled or timed out. Please try again.');
+        } else {
+            showErrorMessage('Error downloading document: ' + error.message);
+        }
+    }
+}
+
+async function downloadTaskDocumentWithProgress(taskId, filename) {
+    try {
+        // Create progress modal
+        const progressModal = createProgressModal('Downloading document...');
+        document.body.appendChild(progressModal);
+
+        const response = await fetch(`${API_BASE_URL}/admin/tasks/${taskId}/document`);
+
+        if (!response.ok) {
+            throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        }
+
+        // Get file size for progress calculation
+        const contentLength = response.headers.get('content-length');
+        const total = parseInt(contentLength, 10);
+        let loaded = 0;
+
+        // Create a readable stream to track progress
+        const reader = response.body.getReader();
+        const chunks = [];
+
+        while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            chunks.push(value);
+            loaded += value.length;
+
+            // Update progress if we have total size
+            if (total) {
+                const progress = Math.round((loaded / total) * 100);
+                updateProgressModal(progressModal, progress);
+            }
+        }
+
+        // Create blob from chunks
+        const blob = new Blob(chunks);
+
+        if (blob.size === 0) {
+            throw new Error('Downloaded document is empty');
+        }
+
+        // Download the file
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || `document_${taskId}`;
+        a.style.display = 'none';
+
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            document.body.removeChild(progressModal);
+        }, 1000);
+
+        showSuccessMessage(`Document "${filename}" downloaded successfully!`);
+
+    } catch (error) {
+        // Remove progress modal on error
+        const progressModal = document.getElementById('progressModal');
+        if (progressModal) {
+            document.body.removeChild(progressModal);
+        }
+
+        console.error('Error downloading document:', error);
+        showErrorMessage('Failed to download document: ' + error.message);
+    }
+}
+
+// Helper function to create progress modal
+function createProgressModal(message) {
+    const modal = document.createElement('div');
+    modal.id = 'progressModal';
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content glass-dark" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>${message}</h3>
+            </div>
+            <div style="padding: 20px;">
+                <div class="progress-bar" style="width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden;">
+                    <div id="progressFill" class="progress-fill" style="width: 0%; height: 100%; background: linear-gradient(135deg, var(--primary), var(--accent)); transition: width 0.3s ease;"></div>
+                </div>
+                <div id="progressText" style="text-align: center; margin-top: 10px; color: white;">0%</div>
+            </div>
+        </div>
+    `;
+    return modal;
+}
+
+// Helper function to update progress modal
+function updateProgressModal(modal, progress) {
+    const progressFill = modal.querySelector('#progressFill');
+    const progressText = modal.querySelector('#progressText');
+
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+
+    if (progressText) {
+        progressText.textContent = `${progress}%`;
+    }
+}
+
+// Alternative version for user tasks documents
+async function downloadUserTaskDocument(taskId, filename) {
+    try {
+        showLoadingMessage('Downloading document...');
+
+        const response = await fetch(`${API_BASE_URL}/user/user-tasks/${taskId}/document`);
+
+        if (response.ok) {
+            const blob = await response.blob();
+
+            if (blob.size === 0) {
+                throw new Error('Document is empty');
+            }
+
+            // Get the correct filename from response headers if available
+            const contentDisposition = response.headers.get('content-disposition');
+            let downloadFilename = filename;
+
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                if (filenameMatch) {
+                    downloadFilename = filenameMatch[1];
+                }
+            }
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = downloadFilename || `document_${taskId}`;
+            a.style.display = 'none';
+
+            document.body.appendChild(a);
+            a.click();
+
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
+
+            hideLoadingMessage();
+            showSuccessMessage(`Document downloaded successfully!`);
+
+        } else {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Download failed: ${response.status}`);
+        }
+
+    } catch (error) {
+        hideLoadingMessage();
+        console.error('Error downloading user task document:', error);
+        showErrorMessage('Error downloading document: ' + error.message);
+    }
+}
+
+// Utility function to check if browser supports file downloads
+function checkDownloadSupport() {
+    const a = document.createElement('a');
+    return typeof a.download !== 'undefined';
+}
+
+// Enhanced download with fallback for older browsers
+async function downloadTaskDocumentWithFallback(taskId, filename) {
+    // Check browser support
+    if (!checkDownloadSupport()) {
+        showErrorMessage('Your browser does not support file downloads. Please use a modern browser.');
+        return;
+    }
+
+    try {
+        await downloadTaskDocument(taskId, filename);
+    } catch (error) {
+        // Fallback: open in new tab if download fails
+        console.warn('Download failed, trying fallback method');
+
+        try {
+            const newWindow = window.open(`${API_BASE_URL}/admin/tasks/${taskId}/document`, '_blank');
+            if (!newWindow) {
+                throw new Error('Popup blocked. Please allow popups for this site.');
+            }
+            showSuccessMessage('Document opened in new tab. Right-click and save to download.');
+        } catch (fallbackError) {
+            showErrorMessage('Unable to download or open document: ' + fallbackError.message);
+        }
+    }
+}
+
+
 
 function renderUserTasks(tasks) {
     const container = document.getElementById('myTasksContainer');
@@ -2095,32 +2372,92 @@ async function handleUserSubmit(e) {
 async function handleTaskSubmit(e) {
     e.preventDefault();
 
-    const formData = {
-        title: document.getElementById('taskTitle').value,
-        assignedTo: document.getElementById('taskAssignedTo').value,
-        priority: document.getElementById('taskPriority').value,
-        dueDate: document.getElementById('taskDueDate').value,
-        description: document.getElementById('taskDescription').value,
-    };
+    const formData = new FormData();
+
+    // Basic task data
+    formData.append('title', document.getElementById('taskTitle').value);
+    formData.append('assignedTo', document.getElementById('taskAssignedTo').value);
+    formData.append('priority', document.getElementById('taskPriority').value);
+    formData.append('dueDate', document.getElementById('taskDueDate').value);
+    formData.append('description', document.getElementById('taskDescription').value);
+
+    // Middle level validation
+    const middleLevelValidator = document.getElementById('taskMiddleLevelValidator')?.value;
+    if (middleLevelValidator) {
+        formData.append('middleLevelValidator', middleLevelValidator);
+        formData.append('needsMiddleLevelValidation', 'true');
+    }
+
+    // Multiple assignees
+    const multipleAssignees = document.getElementById('taskMultipleAssignees')?.value;
+    if (multipleAssignees) {
+        formData.append('assignedToMultiple', JSON.stringify(multipleAssignees.split(',')));
+    }
+
+    // Parent task for job entries
+    const parentTask = document.getElementById('taskParentTask')?.value;
+    if (parentTask) {
+        formData.append('parentTask', parentTask);
+    }
+
+    const soNumber = document.getElementById('taskSONumber')?.value;
+    if (soNumber) {
+        formData.append('soNumber', soNumber);
+        formData.append('stage', document.getElementById('taskStage')?.value || '');
+    }
+
+    // File upload
+    const fileInput = document.getElementById('taskDocument');
+    if (fileInput && fileInput.files[0]) {
+        formData.append('document', fileInput.files[0]);
+    }
+
+    // Privacy settings
+    if (currentUser && document.getElementById('taskAssignedTo').value === currentUser.id) {
+        formData.append('isPrivate', 'true');
+    }
+
+    // Super admin task
+    if (currentUser && currentUser.role === 'super_admin') {
+        formData.append('isSuperAdminTask', 'true');
+    }
 
     const taskId = document.getElementById('taskId').value;
 
     try {
+        let response;
         if (taskId) {
-            await apiCall(`/admin/tasks/${taskId}`, {
+            // For updates, convert FormData back to JSON (or handle file updates separately)
+            const updateData = {
+                title: formData.get('title'),
+                assignedTo: formData.get('assignedTo'),
+                priority: formData.get('priority'),
+                dueDate: formData.get('dueDate'),
+                description: formData.get('description')
+            };
+
+            response = await fetch(`${API_BASE_URL}/admin/tasks/${taskId}`, {
                 method: 'PUT',
-                body: JSON.stringify(formData)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
             });
         } else {
-            await apiCall('/admin/tasks', {
+            // For new tasks with file upload
+            response = await fetch(`${API_BASE_URL}/admin/tasks`, {
                 method: 'POST',
-                body: JSON.stringify(formData)
+                body: formData // Send as FormData for file upload
             });
         }
 
-        showSuccessMessage(taskId ? 'Task updated successfully!' : 'Task created successfully!');
-        closeTaskModal();
+        const result = await response.json();
 
+        if (response.ok) {
+            showSuccessMessage(taskId ? 'Task updated successfully!' : 'Task created successfully!');
+            closeTaskModal();
+            await loadTasks();
+        } else {
+            throw new Error(result.message);
+        }
     } catch (error) {
         console.error('Error saving task:', error);
         showErrorMessage(error.message);
@@ -2179,29 +2516,7 @@ async function deleteTask(taskId) {
     }
 }
 
-// Utility Functions
-function filterTasks() {
-    const filter = document.getElementById('taskFilter').value;
-    currentTaskFilter = filter;
-    renderActiveTasks(allTasks, filter);
 
-    // Update filter info
-    const filterInfo = document.querySelector('.filter-info');
-    if (filter) {
-        if (!filterInfo) {
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'filter-info';
-            infoDiv.innerHTML = `<i class="fas fa-filter"></i> Showing: ${getFilterDisplayName(filter)}`;
-            document.querySelector('#tasksTable').parentNode.insertBefore(infoDiv, document.querySelector('#tasksTable'));
-        } else {
-            filterInfo.innerHTML = `<i class="fas fa-filter"></i> Showing: ${getFilterDisplayName(filter)}`;
-        }
-    } else {
-        if (filterInfo) {
-            filterInfo.remove();
-        }
-    }
-}
 
 function toggleCompletedTasks() {
     const container = document.getElementById('completedTasksContainer');
@@ -2247,10 +2562,7 @@ function getCompletedFilterDisplayName(filter) {
     return filterNames[filter] || filter;
 }
 
-function filterCompletedTasks() {
-    const filter = document.getElementById('completedTaskFilter').value;
-    renderCompletedTasks(completedTasks, filter);
-}
+
 
 // Function to view task details (for completed tasks)
 function viewTaskDetails(taskId) {
@@ -2445,28 +2757,6 @@ async function generateReport() {
     }
 }
 
-async function loadJobTracking() {
-    try {
-        // Update HTML structure if needed
-        updateJobTrackingHTML();
-
-        await Promise.all([
-            loadJobEntries(),
-            loadJobStats(),
-            loadDepartmentStats(),
-            loadStageAssignments(),
-            loadUsersForJobTracking(),
-            loadJobCount()
-        ]);
-
-        setTimeout(() => {
-            setupJobFiltersEventListeners();
-        }, 500);
-
-    } catch (error) {
-        console.error('Error loading job tracking data:', error);
-    }
-}
 
 
 
@@ -2481,57 +2771,6 @@ async function loadJobCount() {
     }
 }
 
-// Load job entries
-async function loadJobEntries() {
-    try {
-        const month = document.getElementById('monthFilter')?.value || '';
-        const team = document.getElementById('teamFilter')?.value || '';
-        const status = document.getElementById('statusFilter')?.value || '';
-        const customer = document.getElementById('customerFilter')?.value || '';
-
-        const params = new URLSearchParams();
-        if (month.trim()) params.append('month', month.trim());
-        if (team.trim()) params.append('team', team.trim());
-        if (status.trim()) params.append('status', status.trim());
-        if (customer.trim()) params.append('customer', customer.trim());
-
-        const queryString = params.toString();
-        const url = `/admin/job-entries${queryString ? '?' + queryString : ''}`;
-        console.log('API URL:', url);
-
-        const response = await apiCall(url);
-        allJobEntries = response;
-
-        // Separate active and cancelled jobs
-        const activeJobs = response.filter(job => job.status !== 'so_cancelled');
-        const cancelledJobs = response.filter(job => job.status === 'so_cancelled');
-
-        // Render active jobs in main table
-        renderJobEntries(activeJobs);
-
-        const cancelledCountElement = document.getElementById('totalCancelledCount');
-        if (cancelledCountElement) {
-            cancelledCountElement.textContent = cancelledJobs.length;
-        }
-        renderCancelledJobs(cancelledJobs);
-
-        // Show/hide cancelled jobs card based on count
-        const cancelledCard = document.getElementById('cancelledJobsCard');
-        if (cancelledCard) {
-            cancelledCard.style.display = cancelledJobs.length > 0 ? 'block' : 'none';
-        }
-
-        // Update cancelled jobs count and render cancelled jobs
-        updateFilterInfo(month, team, status, customer, activeJobs.length, response.length);
-
-    } catch (error) {
-        console.error('Error loading job entries:', error);
-        const tbody = document.querySelector('#jobEntriesTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: #666; padding: 40px;">Error loading job entries</td></tr>';
-        }
-    }
-}
 
 function renderCancelledJobs(cancelledJobs) {
     const tbody = document.querySelector('#cancelledJobsTable tbody');
@@ -2731,32 +2970,6 @@ async function updateJobField(jobId, fieldName, newValue) {
     }
 }
 
-// Load admin user assigned tasks
-async function loadAdminUserAssignedTasks() {
-    try {
-        const status = document.getElementById('userAssignedTaskFilter')?.value || '';
-        const assignedBy = document.getElementById('assignerFilter')?.value || '';
-        const assignedTo = document.getElementById('assigneeFilter')?.value || '';
-
-        const params = new URLSearchParams();
-        if (status) params.append('status', status);
-        if (assignedBy) params.append('assignedBy', assignedBy);
-        if (assignedTo) params.append('assignedTo', assignedTo);
-
-        const tasks = await apiCall(`/admin/user-assigned-tasks?${params.toString()}`);
-        renderAdminUserAssignedTasks(tasks);
-        updateAdminUserAssignedTaskStats(tasks);
-
-        // Only populate filters on first load
-        if (!status && !assignedBy && !assignedTo) {
-            populateUserFilters(tasks);
-        }
-    } catch (error) {
-        console.error('Error loading admin user assigned tasks:', error);
-        document.querySelector('#adminUserAssignedTasksTable tbody').innerHTML =
-            '<tr><td colspan="8" style="text-align: center; color: #666; padding: 40px;">Error loading user assigned tasks</td></tr>';
-    }
-}
 
 // Render admin user assigned tasks
 function renderAdminUserAssignedTasks(tasks) {
@@ -3267,6 +3480,396 @@ async function deleteStageAssignment(assignmentId) {
         }
     }
 }
+
+function filterTasks() {
+    const filter = document.getElementById('taskFilter').value;
+    currentFilters.taskFilter = filter;
+    renderActiveTasks(allTasks, filter);
+    updateFilterInfo('taskFilter', filter);
+}
+
+function filterCompletedTasks() {
+    const filter = document.getElementById('completedTaskFilter').value;
+    currentFilters.completedTaskFilter = filter;
+    renderCompletedTasks(completedTasks, filter);
+}
+
+function filterUserTasks() {
+    const statusFilter = document.getElementById('userTaskStatusFilter').value;
+    const sortFilter = document.getElementById('userTaskSortFilter').value;
+
+    currentFilters.userTaskStatusFilter = statusFilter;
+    currentFilters.userTaskSortFilter = sortFilter;
+
+    filteredUserTasks = applyUserTaskStatusFilter(allUserTasks, statusFilter);
+    filteredUserTasks = applyUserTaskSorting(filteredUserTasks, sortFilter);
+    renderUserTasks(filteredUserTasks);
+    updateUserTaskFilterInfo(statusFilter, filteredUserTasks.length, allUserTasks.length);
+}
+
+// Restore filters after any operation
+function restoreFilters() {
+    if (document.getElementById('taskFilter')) {
+        document.getElementById('taskFilter').value = currentFilters.taskFilter;
+    }
+    if (document.getElementById('completedTaskFilter')) {
+        document.getElementById('completedTaskFilter').value = currentFilters.completedTaskFilter;
+    }
+    if (document.getElementById('userTaskStatusFilter')) {
+        document.getElementById('userTaskStatusFilter').value = currentFilters.userTaskStatusFilter;
+    }
+    if (document.getElementById('userTaskSortFilter')) {
+        document.getElementById('userTaskSortFilter').value = currentFilters.userTaskSortFilter;
+    }
+}
+
+async function loadCompletionRequests() {
+    try {
+        console.log('Loading completion requests...');
+
+        let admin = await Admin.findOne();
+        if (!admin) {
+            console.log('No admin found, creating default admin...');
+            admin = await Admin.create({
+                username: 'admin',
+                password: 'admin123',
+                email: 'planning@ashtavinayaka.com',
+                name: 'System Admin'
+            });
+        }
+
+        const requests = await apiCall('/admin/completion-requests');
+        console.log('Completion requests loaded:', requests.length);
+
+        const tbody = document.querySelector('#completionRequestsTable tbody');
+        if (!tbody) {
+            console.error('Completion requests table not found in DOM');
+            return;
+        }
+
+        if (requests.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">No pending completion requests</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = requests.map(task => `
+            <tr>
+                <td>
+                    <strong>${task.title}</strong><br>
+                    <small style="color: #666;">${task.description ? task.description.substring(0, 100) + '...' : ''}</small>
+                </td>
+                <td>${task.assignedToName || 'Unknown'}</td>
+                <td>${task.completionRequestDate ? new Date(task.completionRequestDate).toLocaleDateString() : 'N/A'}</td>
+                <td>${new Date(task.dueDate).toLocaleDateString()}</td>
+                <td>
+                    <span class="priority-badge priority-${task.priority}">
+                        ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                    </span>
+                </td>
+                <td>
+                    <button class="action-btn btn-complete" onclick="approveTaskCompletion('${task._id}')" title="Approve">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                    <button class="action-btn btn-delete" onclick="rejectTaskCompletion('${task._id}')" title="Reject">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        restoreFilters(); // Restore filters after loading
+    } catch (error) {
+        console.error('Error loading completion requests:', error);
+        const tbody = document.querySelector('#completionRequestsTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">Error loading completion requests</td></tr>';
+        }
+    }
+}
+
+// Enhanced job tracking load with better error handling
+async function loadJobTracking() {
+    try {
+        console.log('Loading job tracking data...');
+
+        // Check if user is logged in and has proper permissions
+        if (!currentAdmin && !currentUser) {
+            console.error('No authenticated user found');
+            return;
+        }
+
+        updateJobTrackingHTML();
+
+        await Promise.all([
+            loadJobEntries(),
+            loadJobStats(),
+            loadDepartmentStats(),
+            loadStageAssignments(),
+            loadUsersForJobTracking(),
+            loadJobCount()
+        ]);
+
+        setTimeout(() => {
+            setupJobFiltersEventListeners();
+            restoreJobFilters();
+        }, 500);
+
+        console.log('Job tracking data loaded successfully');
+    } catch (error) {
+        console.error('Error loading job tracking data:', error);
+        showErrorMessage('Error loading job tracking data: ' + error.message);
+    }
+}
+
+// Fix job filters persistence
+function restoreJobFilters() {
+    if (document.getElementById('monthFilter')) {
+        document.getElementById('monthFilter').value = currentFilters.jobFilters.month;
+    }
+    if (document.getElementById('teamFilter')) {
+        document.getElementById('teamFilter').value = currentFilters.jobFilters.team;
+    }
+    if (document.getElementById('statusFilter')) {
+        document.getElementById('statusFilter').value = currentFilters.jobFilters.status;
+    }
+    if (document.getElementById('customerFilter')) {
+        document.getElementById('customerFilter').value = currentFilters.jobFilters.customer;
+    }
+}
+
+// Enhanced job entries loading with better error handling
+async function loadJobEntries() {
+    try {
+        if (!currentAdmin) {
+            console.error('Admin not authenticated for job entries');
+            return;
+        }
+
+        const month = document.getElementById('monthFilter')?.value || '';
+        const team = document.getElementById('teamFilter')?.value || '';
+        const status = document.getElementById('statusFilter')?.value || '';
+        const customer = document.getElementById('customerFilter')?.value || '';
+
+        // Store current filters
+        currentFilters.jobFilters = { month, team, status, customer };
+
+        const params = new URLSearchParams();
+        if (month.trim()) params.append('month', month.trim());
+        if (team.trim()) params.append('team', team.trim());
+        if (status.trim()) params.append('status', status.trim());
+        if (customer.trim()) params.append('customer', customer.trim());
+
+        const queryString = params.toString();
+        const url = `/admin/job-entries${queryString ? '?' + queryString : ''}`;
+        console.log('Loading job entries from:', url);
+
+        const response = await apiCall(url);
+        console.log('Job entries response:', response.length, 'entries');
+
+        allJobEntries = response;
+
+        const activeJobs = response.filter(job => job.status !== 'so_cancelled');
+        const cancelledJobs = response.filter(job => job.status === 'so_cancelled');
+
+        renderJobEntries(activeJobs);
+
+        const cancelledCountElement = document.getElementById('totalCancelledCount');
+        if (cancelledCountElement) {
+            cancelledCountElement.textContent = cancelledJobs.length;
+        }
+        renderCancelledJobs(cancelledJobs);
+
+        const cancelledCard = document.getElementById('cancelledJobsCard');
+        if (cancelledCard) {
+            cancelledCard.style.display = cancelledJobs.length > 0 ? 'block' : 'none';
+        }
+
+        updateFilterInfo(month, team, status, customer, activeJobs.length, response.length);
+
+    } catch (error) {
+        console.error('Error loading job entries:', error);
+        const tbody = document.querySelector('#jobEntriesTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: #666; padding: 40px;">Error loading job entries: ' + error.message + '</td></tr>';
+        }
+    }
+}
+
+// Enhanced dispatched jobs loading
+async function loadDispatchedJobs() {
+    try {
+        console.log('Loading dispatched jobs...');
+
+        if (!currentAdmin) {
+            console.error('Admin not authenticated for dispatched jobs');
+            return;
+        }
+
+        const response = await apiCall('/admin/dispatched-jobs');
+        console.log('Dispatched jobs response:', response.length, 'jobs');
+
+        dispatchedJobsData = response;
+        renderDispatchedJobs(response);
+        updateDispatchedJobsStats(response);
+
+        restoreFilters();
+    } catch (error) {
+        console.error('Error loading dispatched jobs:', error);
+        const tbody = document.querySelector('#dispatchedJobsTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666; padding: 40px;">Error loading dispatched jobs: ' + error.message + '</td></tr>';
+        }
+    }
+}
+
+// Enhanced user assigned tasks loading
+async function loadAdminUserAssignedTasks() {
+    try {
+        console.log('Loading admin user assigned tasks...');
+
+        if (!currentAdmin) {
+            console.error('Admin not authenticated for user assigned tasks');
+            return;
+        }
+
+        const status = document.getElementById('userAssignedTaskFilter')?.value || '';
+        const assignedBy = document.getElementById('assignerFilter')?.value || '';
+        const assignedTo = document.getElementById('assigneeFilter')?.value || '';
+
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (assignedBy) params.append('assignedBy', assignedBy);
+        if (assignedTo) params.append('assignedTo', assignedTo);
+
+        const url = `/admin/user-assigned-tasks?${params.toString()}`;
+        console.log('Loading user assigned tasks from:', url);
+
+        const tasks = await apiCall(url);
+        console.log('User assigned tasks response:', tasks.length, 'tasks');
+
+        renderAdminUserAssignedTasks(tasks);
+        updateAdminUserAssignedTaskStats(tasks);
+
+        if (!status && !assignedBy && !assignedTo) {
+            populateUserFilters(tasks);
+        }
+
+        restoreFilters();
+    } catch (error) {
+        console.error('Error loading admin user assigned tasks:', error);
+        const tbody = document.querySelector('#adminUserAssignedTasksTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666; padding: 40px;">Error loading user assigned tasks: ' + error.message + '</td></tr>';
+        }
+    }
+}
+
+// Fix section loading with proper authentication checks
+async function loadSectionData(section) {
+    console.log('Loading section data for:', section);
+
+    if (!currentAdmin && !currentUser) {
+        console.error('No authenticated user for section:', section);
+        showErrorMessage('Please login to access this section');
+        return;
+    }
+
+    try {
+        switch (section) {
+            case 'overview':
+                await loadStats();
+                await loadRecentActivity();
+                break;
+            case 'users':
+                await loadUsers();
+                break;
+            case 'tasks':
+                await loadTasks();
+                break;
+            case 'completion-requests':
+                await loadCompletionRequests();
+                break;
+            case 'analytics':
+                await loadAnalytics();
+                break;
+            case 'job-tracking':
+                await loadJobTracking();
+                break;
+            case 'dispatched-jobs':
+                await loadDispatchedJobs();
+                break;
+            case 'user-assigned-tasks':
+                await loadAdminUserAssignedTasks();
+                break;
+            default:
+                console.warn('Unknown section:', section);
+        }
+    } catch (error) {
+        console.error('Error loading section data:', error);
+        showErrorMessage('Error loading section: ' + error.message);
+    }
+}
+
+// Enhanced authentication check
+function checkAuthStatus() {
+    console.log('Checking authentication status...');
+
+    const savedAuth = sessionStorage.getItem('scrumflow_auth');
+    if (savedAuth) {
+        try {
+            const authData = JSON.parse(savedAuth);
+            console.log('Found saved auth:', authData.type);
+
+            if (authData.type === 'admin') {
+                currentAdmin = authData.user;
+                showAdminDashboard();
+            } else if (authData.type === 'super_admin') {
+                currentAdmin = authData.user; // Treat super admin as admin for UI
+                showAdminDashboard();
+            } else {
+                currentUser = authData.user;
+                showUserDashboard();
+            }
+        } catch (error) {
+            console.error('Error parsing saved auth:', error);
+            sessionStorage.removeItem('scrumflow_auth');
+        }
+    } else {
+        console.log('No saved authentication found');
+    }
+}
+
+// Add debugging for API calls
+async function apiCall(endpoint, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    };
+
+    console.log('API Call:', endpoint, options.method || 'GET');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...defaultOptions,
+            ...options
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('API Error:', response.status, errorData);
+            throw new Error(errorData.message || `API call failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('API Response for', endpoint, ':', data);
+        return data;
+    } catch (error) {
+        console.error('API Call failed:', endpoint, error);
+        throw error;
+    }
+}
+
 
 // Job status update functions
 function updateJobStatus(jobId) {
