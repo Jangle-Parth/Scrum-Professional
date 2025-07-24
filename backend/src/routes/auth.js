@@ -1,5 +1,6 @@
 // src/routes/auth.js
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 const User = require('../models/User');
 const SuperAdmin = require('../models/SuperAdmin');

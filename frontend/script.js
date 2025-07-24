@@ -51,8 +51,76 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('userTaskSortFilter').value = 'due_date_asc';
         }
     }, 1000);
+    setTimeout(() => {
+        const completionRequestForm = document.getElementById('completionRequestForm');
+        if (completionRequestForm) {
+            completionRequestForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
 
-    checkAuthStatus();
+                const taskId = document.getElementById('completionTaskId').value;
+                const remarks = document.getElementById('completionRemarks').value;
+
+                try {
+                    const response = await apiCall(`/user/tasks/${taskId}/request-completion`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            requestedBy: currentUser.name,
+                            requestedById: currentUser.id,
+                            remarks: remarks
+                        })
+                    });
+
+                    showSuccessMessage('✅ Completion request sent to admin for approval!');
+                    closeCompletionRequestModal();
+                    await loadUserTasks();
+                    await loadUserStats();
+                } catch (error) {
+                    console.error('Error requesting task completion:', error);
+                    showErrorMessage(error.message);
+                }
+            });
+        }
+    }, 1000);
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(() => {
+            const jobStatusForm = document.getElementById('jobStatusForm');
+            if (jobStatusForm) {
+                jobStatusForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+
+                    const jobId = document.getElementById('currentJobId').value;
+                    const status = document.getElementById('jobStatus').value;
+                    const remarks = document.getElementById('jobRemarks').value;
+
+                    try {
+                        const updateData = {
+                            status,
+                            changedBy: currentAdmin ? currentAdmin.name : 'Admin',
+                            remarks: remarks
+                        };
+
+                        const response = await apiCall(`/admin/job-entries/${jobId}/status`, {
+                            method: 'PATCH',
+                            body: JSON.stringify(updateData)
+                        });
+
+                        if (response.success) {
+                            showSuccessMessage(response.message);
+                            closeJobStatusModal();
+                            await loadJobTracking();
+                        } else {
+                            showErrorMessage('Failed to update job status');
+                        }
+                    } catch (error) {
+                        console.error('Error updating job status:', error);
+                        showErrorMessage(error.message);
+                    }
+                });
+            }
+        }, 1000);
+
+        checkAuthStatus();
+    });
 });
 
 const enhancedStyles = `
@@ -273,11 +341,7 @@ async function handleJobStatusSubmit(e) {
 
 
 function setupJobStatusForm() {
-    // Remove existing event listener to prevent duplicates
-    // const existingForm = document.getElementById('jobStatusForm');
-    // if (existingForm) {
-    //     existingForm.removeEventListener('submit', handleJobStatusSubmit);
-    // }
+
 
     // Add event listener with proper error handling
     document.addEventListener('submit', function (e) {
@@ -1178,11 +1242,17 @@ async function loadUserTaskForEdit(taskId) {
 async function loadStats() {
     try {
         const stats = await apiCall('/admin/dashboard-stats');
-        document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
-        document.getElementById('totalTasks').textContent = stats.totalTasks || 0;
-        document.getElementById('pendingTasks').textContent = stats.pendingTasks || 0;
+        if (stats) {
+            document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
+            document.getElementById('totalTasks').textContent = stats.totalTasks || 0;
+            document.getElementById('pendingTasks').textContent = stats.pendingTasks || 0;
+        }
     } catch (error) {
         console.error('Error loading stats:', error);
+        // Set default values
+        document.getElementById('totalUsers').textContent = '0';
+        document.getElementById('totalTasks').textContent = '0';
+        document.getElementById('pendingTasks').textContent = '0';
     }
 }
 
@@ -3895,14 +3965,20 @@ async function apiCall(endpoint, options = {}) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
+            }
+
             console.error('API Error:', response.status, errorData);
 
             // Handle authentication errors
             if (response.status === 401) {
                 console.log('Authentication failed, redirecting to login');
                 logout();
-                return;
+                return null; // Return null instead of undefined
             }
 
             throw new Error(errorData.message || `API call failed with status ${response.status}`);
@@ -3980,70 +4056,7 @@ function closeJobStatusModal() {
     document.getElementById('jobStatusModal').classList.remove('active');
 }
 
-document.getElementById('completionRequestForm').addEventListener('submit', async function (e) {
-    const completionRequestForm = document.getElementById('completionRequestForm');
-    if (completionRequestForm) {
-        completionRequestForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
 
-            const taskId = document.getElementById('completionTaskId').value;
-            const remarks = document.getElementById('completionRemarks').value;
-
-            try {
-                const response = await apiCall(`/user/tasks/${taskId}/request-completion`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({
-                        requestedBy: currentUser.name,
-                        requestedById: currentUser.id,
-                        remarks: remarks
-                    })
-                });
-
-                showSuccessMessage('✅ Completion request sent to admin for approval!');
-                closeCompletionRequestModal();
-                await loadUserTasks();
-                await loadUserStats();
-            } catch (error) {
-                console.error('Error requesting task completion:', error);
-                showErrorMessage(error.message);
-            }
-        });
-    }
-});
-
-
-
-document.getElementById('jobStatusForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
-
-    const jobId = document.getElementById('currentJobId').value;
-    const status = document.getElementById('jobStatus').value;
-    const remarks = document.getElementById('jobRemarks').value;
-
-    try {
-        const updateData = {
-            status,
-            changedBy: currentAdmin ? currentAdmin.name : 'Admin',
-            remarks: remarks
-        };
-
-        const response = await apiCall(`/admin/job-entries/${jobId}/status`, {
-            method: 'PATCH',
-            body: JSON.stringify(updateData)
-        });
-
-        if (response.success) {
-            showSuccessMessage(response.message);
-            closeJobStatusModal();
-            await loadJobTracking();
-        } else {
-            showErrorMessage('Failed to update job status');
-        }
-    } catch (error) {
-        console.error('Error updating job status:', error);
-        showErrorMessage(error.message);
-    }
-});
 
 async function deleteJobEntry(jobId) {
     if (confirm('Are you sure you want to delete this job entry?')) {
