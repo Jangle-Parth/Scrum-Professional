@@ -1,11 +1,32 @@
 // src/routes/user.js
 const express = require('express');
+const multer = require('multer');
 const User = require('../models/User');
 const UserTask = require('../models/UserTask');
 const Task = require('../models/Task');
+const Admin = require('../models/Admin');
 const emailService = require('../services/emailService');
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        // Allow common file types
+        const allowedTypes = /jpeg|jpg|png|pdf|doc|docx|txt|xlsx|xls/;
+        const extname = allowedTypes.test(file.originalname.toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Invalid file type'));
+        }
+    }
+});
 
 // Get team members
 router.get('/team-members', async (req, res) => {
@@ -103,7 +124,6 @@ router.get('/:id/tasks', async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
-
 
 // Get user progress
 router.get('/:id/progress', async (req, res) => {
@@ -235,7 +255,6 @@ router.get('/parent-tasks', async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
-
 
 // Get tasks assigned by a specific user
 router.get('/:id/assigned-user-tasks', async (req, res) => {
@@ -384,6 +403,7 @@ router.patch('/user-tasks/:id/complete', async (req, res) => {
     }
 });
 
+// Complete regular task (request completion approval)
 router.patch('/tasks/:id/complete', async (req, res) => {
     try {
         const taskId = req.params.id;
@@ -458,6 +478,61 @@ router.patch('/tasks/:id/complete', async (req, res) => {
     }
 });
 
+// Request task completion (for compatibility)
+router.patch('/tasks/:id/request-completion', async (req, res) => {
+    try {
+        const taskId = req.params.id;
+        const { requestedBy, requestedById, remarks } = req.body;
+
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        if (task.status === 'completed') {
+            return res.status(400).json({ message: 'Task is already completed' });
+        }
+
+        const completedAt = new Date();
+        const dueDate = new Date(task.dueDate);
+
+        // Set both dates to start of day for proper comparison
+        const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        const completedDateStart = new Date(completedAt.getFullYear(), completedAt.getMonth(), completedAt.getDate());
+
+        const isOnTime = completedDateStart <= dueDateStart;
+
+        const updateData = {
+            status: 'pending_approval',
+            progress: 100,
+            completedAt: completedAt,
+            isOnTime: isOnTime,
+            completionRequestDate: new Date(),
+            requestedBy: requestedBy,
+            requestedById: requestedById,
+            remarks: remarks,
+            updatedAt: new Date()
+        };
+
+        const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true })
+            .populate('assignedTo', 'name email');
+
+        // Send completion request email to admin
+        const admin = await Admin.findById(task.adminId);
+        if (admin && updatedTask.assignedTo) {
+            await emailService.sendCompletionRequestEmail(admin, updatedTask.assignedTo, updatedTask);
+        }
+
+        res.json({
+            success: true,
+            task: updatedTask,
+            message: 'Task completion request sent to admin for approval!'
+        });
+    } catch (error) {
+        console.error('Task completion request error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
 
 // Delete user task
 router.delete('/user-tasks/:id', async (req, res) => {
@@ -572,6 +647,25 @@ router.get('/:id/user-task-analytics', async (req, res) => {
             assigned: assignedAnalytics,
             received: receivedAnalytics
         });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Download user task document
+router.get('/user-tasks/:id/document', async (req, res) => {
+    try {
+        const userTask = await UserTask.findById(req.params.id);
+        if (!userTask || !userTask.attachedDocument) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+
+        res.set({
+            'Content-Type': userTask.attachedDocument.mimeType,
+            'Content-Disposition': `attachment; filename="${userTask.attachedDocument.originalName}"`
+        });
+
+        res.send(userTask.attachedDocument.data);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
