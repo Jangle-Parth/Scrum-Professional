@@ -1094,6 +1094,146 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Completion Requests Section -->
+            <section id="completion-requests" class="content-section">
+                <header class="page-header">
+                    <h1 class="page-title">Task Completion Requests</h1>
+                </header>
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3 class="card-title">Pending Approvals</h3>
+                    </div>
+                    <div class="table-container">
+                        <table id="completionRequestsTable">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Requested By</th>
+                                    <th>Request Date</th>
+                                    <th>Due Date</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading completion requests...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Job Tracking Section -->
+            <section id="job-tracking" class="content-section">
+                <header class="page-header">
+                    <h1 class="page-title">Daily Job Tracking</h1>
+                    <div>
+                        <button class="btn btn-success" onclick="openManualJobEntryModal()">
+                            <i class="fas fa-plus"></i> Add Job Entry
+                        </button>
+                        <button class="btn btn-warning" onclick="downloadJobExcel()">
+                            <i class="fas fa-download"></i> Download Excel
+                        </button>
+                    </div>
+                </header>
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3 class="card-title">Job Entries</h3>
+                    </div>
+                    <div class="table-container">
+                        <table id="jobEntriesTable">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>S.O#</th>
+                                    <th>Customer</th>
+                                    <th>Item Code</th>
+                                    <th>Particulars</th>
+                                    <th>QTY</th>
+                                    <th>Week</th>
+                                    <th>Status</th>
+                                    <th>Assigned</th>
+                                    <th>History</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="11" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading job entries...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dispatched Jobs Section -->
+            <section id="dispatched-jobs" class="content-section">
+                <header class="page-header">
+                    <h1 class="page-title">Dispatched Jobs</h1>
+                </header>
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3 class="card-title">Dispatched Jobs</h3>
+                    </div>
+                    <div class="table-container">
+                        <table id="dispatchedJobsTable">
+                            <thead>
+                                <tr>
+                                    <th>S.O#</th>
+                                    <th>Customer</th>
+                                    <th>Item Code</th>
+                                    <th>Duration</th>
+                                    <th>Dispatched Date</th>
+                                    <th>Analysis</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading dispatched jobs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Assigned Tasks Section -->
+            <section id="user-assigned-tasks" class="content-section">
+                <header class="page-header">
+                    <h1 class="page-title">User Assigned Tasks</h1>
+                </header>
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3 class="card-title">All User Tasks</h3>
+                    </div>
+                    <div class="table-container">
+                        <table id="adminUserAssignedTasksTable">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Assigned By</th>
+                                    <th>Assigned To</th>
+                                    <th>Priority</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading user tasks...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -1370,6 +1510,42 @@
                     <i class="fas fa-save"></i> <span id="userTaskSubmitText">Assign Task</span>
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- Completion Request Modal -->
+    <div id="completionRequestModal" class="modal">
+        <div class="modal-content glass-dark">
+            <div class="modal-header">
+                <h3>Request Task Completion</h3>
+                <button class="close-btn" onclick="closeCompletionRequestModal()">&times;</button>
+            </div>
+            <form id="completionRequestForm">
+                <input type="hidden" id="completionTaskId">
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label for="completionRemarks">Completion Remarks</label>
+                        <textarea id="completionRemarks" class="form-control" rows="4" 
+                                placeholder="Please provide details about task completion..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check"></i> Request Completion Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Description Modal -->
+    <div id="taskDescriptionModal" class="modal">
+        <div class="modal-content glass-dark">
+            <div class="modal-header">
+                <h3 id="taskDescriptionModalTitle">Task Details</h3>
+                <button class="close-btn" onclick="closeTaskDescriptionModal()">&times;</button>
+            </div>
+            <div id="taskDescriptionContent" style="padding: 20px;">
+                <!-- Content will be loaded here -->
+            </div>
         </div>
     </div>
 

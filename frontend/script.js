@@ -305,7 +305,6 @@ function toggleRemoveDropdown() {
     }
 }
 
-// Event Listeners
 function setupEventListeners() {
     // Login form
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -324,16 +323,41 @@ function setupEventListeners() {
     document.getElementById('userForm').addEventListener('submit', handleUserSubmit);
     document.getElementById('taskForm').addEventListener('submit', handleTaskSubmit);
 
-    document.getElementById('userAssignedTaskFilter')?.addEventListener('change', loadAdminUserAssignedTasks);
-    document.getElementById('assignerFilter')?.addEventListener('change', loadAdminUserAssignedTasks);
-    document.getElementById('assigneeFilter')?.addEventListener('change', loadAdminUserAssignedTasks);
+    // Add null checks for optional elements
+    const userAssignedTaskFilter = document.getElementById('userAssignedTaskFilter');
+    if (userAssignedTaskFilter) {
+        userAssignedTaskFilter.addEventListener('change', loadAdminUserAssignedTasks);
+    }
+
+    const assignerFilter = document.getElementById('assignerFilter');
+    if (assignerFilter) {
+        assignerFilter.addEventListener('change', loadAdminUserAssignedTasks);
+    }
+
+    const assigneeFilter = document.getElementById('assigneeFilter');
+    if (assigneeFilter) {
+        assigneeFilter.addEventListener('change', loadAdminUserAssignedTasks);
+    }
 
     // Filter
-    document.getElementById('taskFilter').addEventListener('change', filterTasks);
-    document.getElementById('userTaskForm').addEventListener('submit', handleUserTaskSubmit);
-    document.getElementById('userTaskFilter').addEventListener('change', () => {
-        loadUserAssignedTasks();
-    });
+    const taskFilter = document.getElementById('taskFilter');
+    if (taskFilter) {
+        taskFilter.addEventListener('change', filterTasks);
+    }
+
+    const userTaskForm = document.getElementById('userTaskForm');
+    if (userTaskForm) {
+        userTaskForm.addEventListener('submit', handleUserTaskSubmit);
+    }
+
+    const userTaskFilter = document.getElementById('userTaskFilter');
+    if (userTaskFilter) {
+        userTaskFilter.addEventListener('change', () => {
+            loadUserAssignedTasks();
+        });
+    }
+
+    // Add delay for manual job form
     setTimeout(() => {
         const manualJobForm = document.getElementById('manualJobEntryForm');
         if (manualJobForm) {
@@ -3934,28 +3958,33 @@ function closeJobStatusModal() {
 }
 
 document.getElementById('completionRequestForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
+    const completionRequestForm = document.getElementById('completionRequestForm');
+    if (completionRequestForm) {
+        completionRequestForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
 
-    const taskId = document.getElementById('completionTaskId').value;
-    const remarks = document.getElementById('completionRemarks').value;
+            const taskId = document.getElementById('completionTaskId').value;
+            const remarks = document.getElementById('completionRemarks').value;
 
-    try {
-        const response = await apiCall(`/user/tasks/${taskId}/request-completion`, {
-            method: 'PATCH',
-            body: JSON.stringify({
-                requestedBy: currentUser.name,
-                requestedById: currentUser.id,
-                remarks: remarks
-            })
+            try {
+                const response = await apiCall(`/user/tasks/${taskId}/request-completion`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                        requestedBy: currentUser.name,
+                        requestedById: currentUser.id,
+                        remarks: remarks
+                    })
+                });
+
+                showSuccessMessage('✅ Completion request sent to admin for approval!');
+                closeCompletionRequestModal();
+                await loadUserTasks();
+                await loadUserStats();
+            } catch (error) {
+                console.error('Error requesting task completion:', error);
+                showErrorMessage(error.message);
+            }
         });
-
-        showSuccessMessage('✅ Completion request sent to admin for approval!');
-        closeCompletionRequestModal();
-        await loadUserTasks();
-        await loadUserStats();
-    } catch (error) {
-        console.error('Error requesting task completion:', error);
-        showErrorMessage(error.message);
     }
 });
 
