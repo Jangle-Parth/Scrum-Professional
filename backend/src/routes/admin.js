@@ -5,9 +5,17 @@ const Admin = require('../models/Admin');
 const SuperAdmin = require('../models/SuperAdmin');
 const User = require('../models/User');
 const Task = require('../models/Task');
-const activityService = require('../services/activityService');
+const UserTask = require('../models/UserTask');
+const DispatchedJob = require('../models/DispatchedJob');
+const StageAssignment = require('../models/StageAssignment');
+const CustomField = require('../models/CustomField');
+const Activity = require('../models/Activity');
 
 const JobEntry = require('../models/JobEntry');
+
+const activityService = require('../services/activityService');
+const emailService = require('../services/emailService');
+const jobService = require('../services/jobService');
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -422,6 +430,83 @@ router.delete('/tasks/:id', async (req, res) => {
 
         res.json({ message: 'Task deleted successfully' });
     } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+router.get('/analytics', async (req, res) => {
+    try {
+        let admin = await Admin.findOne();
+        if (!admin) {
+            return res.json({
+                completedOnTime: 0,
+                completedLate: 0,
+                completionRate: 0,
+                pendingApprovals: 0,
+                topPerformer: 'N/A',
+                userPerformance: []
+            });
+        }
+
+        const completedTasks = await Task.find({
+            adminId: admin._id,
+            status: 'completed'
+        }).populate('assignedTo', 'name');
+
+        const completedOnTime = completedTasks.filter(task => task.isOnTime === true).length;
+        const completedLate = completedTasks.filter(task => task.isOnTime === false).length;
+
+        const totalTasks = await Task.countDocuments({ adminId: admin._id });
+        const completionRate = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+
+        const pendingApprovals = await Task.countDocuments({
+            adminId: admin._id,
+            status: 'pending_approval'
+        });
+
+        // Calculate user performance
+        const users = await User.find({ adminId: admin._id, status: 'active' });
+        const userPerformance = [];
+
+        for (const user of users) {
+            const userTasks = await Task.find({ assignedTo: user._id });
+            const userCompleted = userTasks.filter(task => task.status === 'completed');
+            const userOnTime = userCompleted.filter(task => task.isOnTime === true);
+            const userLate = userCompleted.filter(task => task.isOnTime === false);
+            const userPending = userTasks.filter(task => task.status !== 'completed');
+            const userPendingApproval = userTasks.filter(task => task.status === 'pending_approval');
+
+            const successRate = userTasks.length > 0 ? Math.round((userCompleted.length / userTasks.length) * 100) : 0;
+
+            userPerformance.push({
+                name: user.name,
+                totalTasks: userTasks.length,
+                completed: userCompleted.length,
+                onTime: userOnTime.length,
+                late: userLate.length,
+                pending: userPending.length,
+                pendingApproval: userPendingApproval.length,
+                successRate
+            });
+        }
+
+        // Find top performer
+        const topPerformer = userPerformance.length > 0
+            ? userPerformance.reduce((prev, current) =>
+                (prev.successRate > current.successRate) ? prev : current
+            ).name
+            : 'N/A';
+
+        res.json({
+            completedOnTime,
+            completedLate,
+            completionRate,
+            pendingApprovals,
+            topPerformer,
+            userPerformance
+        });
+    } catch (error) {
+        console.error('Error loading analytics:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });

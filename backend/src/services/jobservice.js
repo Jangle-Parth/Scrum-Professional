@@ -1,6 +1,6 @@
 // backend/src/services/jobService.js - Fixed Stage Progression
 const JobEntry = require('../models/JobEntry');
-const Task = require('../models/task');
+const Task = require('../models/Task');
 const User = require('../models/User');
 const StageAssignment = require('../models/StageAssignment');
 const DispatchedJob = require('../models/DispatchedJob');

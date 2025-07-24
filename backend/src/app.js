@@ -1,9 +1,12 @@
+// backend/src/app.js - UPDATED with auth middleware
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
+const auth = require('./middleware/auth'); // ADD THIS
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -23,15 +26,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/jobs', jobRoutes);
-app.use('/api/analytics', analyticsRoutes);
+// Routes - UPDATED with auth middleware
+app.use('/api/auth', authRoutes); // No auth needed for login
+app.use('/api/admin', auth, adminRoutes); // Auth required
+app.use('/api/user', auth, userRoutes); // Auth required  
+app.use('/api/tasks', auth, taskRoutes); // Auth required
+app.use('/api/jobs', auth, jobRoutes); // Auth required
+app.use('/api/analytics', auth, analyticsRoutes); // Auth required
 
-// Health check
+// Health check - no auth needed
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',

@@ -26,6 +26,18 @@ initializeSuperAdmin();
 
 const router = express.Router();
 
+const generateToken = (user, userType) => {
+    return jwt.sign(
+        {
+            id: user._id,
+            username: user.username,
+            userType: userType
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+    );
+};
+
 // Login route
 router.post('/login', async (req, res) => {
     try {
@@ -33,8 +45,10 @@ router.post('/login', async (req, res) => {
 
         const superAdmin = await SuperAdmin.findOne({ username });
         if (superAdmin && superAdmin.password === password) {
+            const token = generateToken(superAdmin, 'super_admin');
             return res.json({
                 success: true,
+                token: token,
                 user: {
                     id: superAdmin._id,
                     username: superAdmin.username,
@@ -48,8 +62,10 @@ router.post('/login', async (req, res) => {
         // Check if admin login
         const admin = await Admin.findOne({ username });
         if (admin && admin.password === password) {
+            const token = generateToken(admin, 'admin');
             return res.json({
                 success: true,
+                token: token,
                 user: {
                     id: admin._id,
                     username: admin.username,
@@ -63,8 +79,10 @@ router.post('/login', async (req, res) => {
         // Check if user login
         const user = await User.findOne({ username, status: 'active' });
         if (user && user.password === password) {
+            const token = generateToken(user, 'user');
             return res.json({
                 success: true,
+                token: token,
                 user: {
                     id: user._id,
                     username: user.username,

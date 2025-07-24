@@ -585,17 +585,21 @@ async function handleLogin(e) {
             // Store auth data
             const authData = {
                 user: data.user,
-                type: data.user.role === 'admin' ? 'admin' : 'user',
+                token: data.token,
+                type: data.user.role === 'admin' || data.user.role === 'super_admin' ? 'admin' : 'user',
                 timestamp: Date.now()
             };
+
             sessionStorage.setItem('scrumflow_auth', JSON.stringify(authData));
 
             setTimeout(() => {
-                if (data.user.role === 'admin') {
+                if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                     currentAdmin = data.user;
+                    userType = 'admin';
                     showAdminDashboard();
                 } else {
                     currentUser = data.user;
+                    userType = 'user';
                     showUserDashboard();
                 }
             }, 1500);
@@ -608,12 +612,13 @@ async function handleLogin(e) {
     }
 }
 
+
 function logout() {
     sessionStorage.removeItem('scrumflow_auth');
+    authToken = null;
     currentAdmin = null;
     currentUser = null;
     userType = null;
-    authToken = null;
 
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('userDashboard').classList.remove('active');
@@ -3834,7 +3839,6 @@ async function loadSectionData(section) {
     }
 }
 
-// Enhanced authentication check
 function checkAuthStatus() {
     console.log('Checking authentication status...');
 
@@ -3842,21 +3846,24 @@ function checkAuthStatus() {
     if (savedAuth) {
         try {
             const authData = JSON.parse(savedAuth);
-            console.log('Found saved auth:', authData.type);
+            console.log('Found saved auth:', authData);
+
+            // Set the auth token
+            authToken = authData.token;
 
             if (authData.type === 'admin') {
                 currentAdmin = authData.user;
-                showAdminDashboard();
-            } else if (authData.type === 'super_admin') {
-                currentAdmin = authData.user; // Treat super admin as admin for UI
+                userType = 'admin';
                 showAdminDashboard();
             } else {
                 currentUser = authData.user;
+                userType = 'user';
                 showUserDashboard();
             }
         } catch (error) {
             console.error('Error parsing saved auth:', error);
             sessionStorage.removeItem('scrumflow_auth');
+            authToken = null;
         }
     } else {
         console.log('No saved authentication found');
@@ -3871,17 +3878,33 @@ async function apiCall(endpoint, options = {}) {
         }
     };
 
+    if (authToken) {
+        defaultOptions.headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
     console.log('API Call:', endpoint, options.method || 'GET');
 
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...defaultOptions,
-            ...options
+            ...options,
+            headers: {
+                ...defaultOptions.headers,
+                ...options.headers
+            }
         });
 
         if (!response.ok) {
             const errorData = await response.json();
             console.error('API Error:', response.status, errorData);
+
+            // Handle authentication errors
+            if (response.status === 401) {
+                console.log('Authentication failed, redirecting to login');
+                logout();
+                return;
+            }
+
             throw new Error(errorData.message || `API call failed with status ${response.status}`);
         }
 
