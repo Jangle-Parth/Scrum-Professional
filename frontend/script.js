@@ -2789,7 +2789,7 @@ function renderUserTasks(tasks) {
     }
 
     // Group tasks by parent task or SO number
-    const groupedTasks = groupTasksByParent(tasks);
+    const groupedTasks = groupTasksByTitleWords(tasks);
 
     let html = '';
 
@@ -2822,8 +2822,34 @@ function groupTasksByParent(tasks) {
 
         if (task.parentTaskName) {
             groupName = task.parentTaskName;
-        } else if (task.soNumber) {
-            groupName = `SO# ${task.soNumber} Tasks`;
+        } else if (task.title) {
+            // Group by title instead of SO number
+            groupName = task.title;
+        } else {
+            groupName = 'Individual Tasks';
+        }
+
+        if (!groups[groupName]) {
+            groups[groupName] = [];
+        }
+        groups[groupName].push(task);
+    });
+
+    return groups;
+}
+
+function groupTasksByTitleWords(tasks) {
+    const groups = {};
+
+    tasks.forEach(task => {
+        let groupName;
+
+        if (task.parentTaskName) {
+            groupName = task.parentTaskName;
+        } else if (task.title) {
+            // Group by first 3-4 words of title
+            const words = task.title.split(' ');
+            groupName = words.slice(0, 3).join(' ') + (words.length > 3 ? '...' : '');
         } else {
             groupName = 'Individual Tasks';
         }
