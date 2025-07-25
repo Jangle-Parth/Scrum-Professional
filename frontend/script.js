@@ -318,38 +318,9 @@ function updateJobTrackingHTML() {
     }
 }
 
-function safeSetContent(elementId, content, property = 'textContent') {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element[property] = content;
-        return true;
-    } else {
-        console.warn(`Element with ID '${elementId}' not found`);
-        return false;
-    }
-}
 
-function safeAddEventListener(elementId, event, callback) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.addEventListener(event, callback);
-        return true;
-    } else {
-        console.warn(`Element with ID '${elementId}' not found for event '${event}'`);
-        return false;
-    }
-}
 
-// SOLUTION 9: Fix the line causing error at script.js:4995:39
-// This appears to be related to event listener setup, ensure this pattern is used:
-function safeDOMOperation() {
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeAfterDOM);
-    } else {
-        initializeAfterDOM();
-    }
-}
+
 
 function initializeAfterDOM() {
     // Perform DOM operations here with null checks
@@ -370,36 +341,9 @@ function initializeAfterDOM() {
     });
 }
 
-async function safeApiCall(endpoint, options = {}) {
-    try {
-        return await apiCall(endpoint, options);
-    } catch (error) {
-        console.error(`API call failed for ${endpoint}:`, error);
 
-        // Show user-friendly error message
-        const errorMessage = error.message || 'An unexpected error occurred';
-        showErrorMessage(`Error: ${errorMessage}`);
 
-        return null; // Return null instead of throwing
-    }
-}
 
-// Call the safe DOM operation function
-safeDOMOperation();
-
-function initializeEnhancedUI() {
-    console.log('Initializing enhanced UI...');
-
-    // Set minimum date for task creation to today
-    const today = new Date().toISOString().split('T')[0];
-    const dueDateInputs = ['taskDueDate', 'userTaskDueDate', 'requestedDueDate'];
-    dueDateInputs.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            input.min = today;
-        }
-    });
-}
 
 function setupEnhancedEventListeners() {
     console.log('Setting up enhanced event listeners...');
@@ -863,21 +807,6 @@ function setupEventListeners() {
         console.log('✗ Missing element: userTaskSortFilter');
     }
 
-    // Add other optional filters with null checks
-    const userAssignedTaskFilter = document.getElementById('userAssignedTaskFilter');
-    if (userAssignedTaskFilter) {
-        userAssignedTaskFilter.addEventListener('change', loadAdminUserAssignedTasks);
-    }
-
-    const assignerFilter = document.getElementById('assignerFilter');
-    if (assignerFilter) {
-        assignerFilter.addEventListener('change', loadAdminUserAssignedTasks);
-    }
-
-    const assigneeFilter = document.getElementById('assigneeFilter');
-    if (assigneeFilter) {
-        assigneeFilter.addEventListener('change', loadAdminUserAssignedTasks);
-    }
 }
 
 
@@ -1225,23 +1154,6 @@ async function loadAdminDashboardData() {
     }
 }
 
-// =============================================================================
-// BUG FIXES FOR AUTHENTICATION AND API ISSUES
-// =============================================================================
-
-function validateTeamMemberData(member) {
-    if (!member || typeof member !== 'object') {
-        console.log('Invalid team member data: Object is null or not an object', member);
-        return false;
-    }
-
-    if (!member._id || !member.name) {
-        console.log('Invalid team member data: Missing required fields (_id or name)', member);
-        return false;
-    }
-
-    return true;
-}
 
 // 9. Fix loadUserDashboardData with better error handling
 async function loadUserDashboardData() {
@@ -1290,24 +1202,16 @@ async function loadUserTaskStats() {
 
         // Update UI elements if they exist
         const assignedByMeElement = document.getElementById('assignedByMe');
-        if (assignedByMeElement) {
-            assignedByMeElement.textContent = stats.assignedByMe || 0;
-        }
+
 
         const assignedToMeElement = document.getElementById('assignedToMe');
-        if (assignedToMeElement) {
-            assignedToMeElement.textContent = stats.assignedToMe || 0;
-        }
+
 
         const assignedCompletionRateElement = document.getElementById('assignedCompletionRate');
-        if (assignedCompletionRateElement) {
-            assignedCompletionRateElement.textContent = `${stats.assignedCompletionRate || 0}%`;
-        }
+
 
         const receivedCompletionRateElement = document.getElementById('receivedCompletionRate');
-        if (receivedCompletionRateElement) {
-            receivedCompletionRateElement.textContent = `${stats.receivedCompletionRate || 0}%`;
-        }
+
 
         console.log('User task stats loaded successfully:', stats);
     } catch (error) {
@@ -4357,12 +4261,6 @@ async function deleteUserTaskByAdmin(taskId) {
 }
 
 // Clear user assigned task filters
-function clearUserAssignedTaskFilters() {
-    document.getElementById('userAssignedTaskFilter').value = '';
-    document.getElementById('assignerFilter').value = '';
-    document.getElementById('assigneeFilter').value = '';
-    loadAdminUserAssignedTasks();
-}
 
 
 
