@@ -31,26 +31,48 @@ let currentFilters = {
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('taskFilter').addEventListener('change', filterTasks);
-    document.getElementById('completedTaskFilter').addEventListener('change', filterCompletedTasks);
+    console.log('DOM Content Loaded - Initializing application...');
+
+    // Setup basic event listeners first
     setupEventListeners();
+
+    // Set up filter elements with delays to ensure DOM is ready
     setTimeout(() => {
-        if (document.getElementById('job-tracking')) {
+        const taskFilter = document.getElementById('taskFilter');
+        if (taskFilter) {
+            taskFilter.addEventListener('change', filterTasks);
+        }
+
+        const completedTaskFilter = document.getElementById('completedTaskFilter');
+        if (completedTaskFilter) {
+            completedTaskFilter.addEventListener('change', filterCompletedTasks);
+        }
+
+        // Set default values for user task filters if they exist
+        const userTaskStatusFilter = document.getElementById('userTaskStatusFilter');
+        if (userTaskStatusFilter) {
+            userTaskStatusFilter.value = 'pending';
+        }
+
+        const userTaskSortFilter = document.getElementById('userTaskSortFilter');
+        if (userTaskSortFilter) {
+            userTaskSortFilter.value = 'due_date_asc';
+        }
+    }, 500);
+
+    // Setup job tracking elements
+    setTimeout(() => {
+        const jobTrackingSection = document.getElementById('job-tracking');
+        if (jobTrackingSection) {
             createJobStatusModal();
             setupJobStatusForm();
             updateJobStatusFilter();
+            updateJobTrackingHTML();
+            setupJobFiltersEventListeners();
         }
     }, 1000);
-    setTimeout(() => {
-        updateJobTrackingHTML();
-        setupJobFiltersEventListeners();
-    }, 1000);
-    setTimeout(() => {
-        if (document.getElementById('userTaskStatusFilter')) {
-            document.getElementById('userTaskStatusFilter').value = 'pending';
-            document.getElementById('userTaskSortFilter').value = 'due_date_asc';
-        }
-    }, 1000);
+
+    // Setup completion request form
     setTimeout(() => {
         const completionRequestForm = document.getElementById('completionRequestForm');
         if (completionRequestForm) {
@@ -81,47 +103,94 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     }, 1000);
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(() => {
-            const jobStatusForm = document.getElementById('jobStatusForm');
-            if (jobStatusForm) {
-                jobStatusForm.addEventListener('submit', async function (e) {
-                    e.preventDefault();
 
-                    const jobId = document.getElementById('currentJobId').value;
-                    const status = document.getElementById('jobStatus').value;
-                    const remarks = document.getElementById('jobRemarks').value;
+    // Setup job status form
+    setTimeout(() => {
+        const jobStatusForm = document.getElementById('jobStatusForm');
+        if (jobStatusForm) {
+            jobStatusForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
 
-                    try {
-                        const updateData = {
-                            status,
-                            changedBy: currentAdmin ? currentAdmin.name : 'Admin',
-                            remarks: remarks
-                        };
+                const jobId = document.getElementById('currentJobId').value;
+                const status = document.getElementById('jobStatus').value;
+                const remarks = document.getElementById('jobRemarks').value;
 
-                        const response = await apiCall(`/admin/job-entries/${jobId}/status`, {
-                            method: 'PATCH',
-                            body: JSON.stringify(updateData)
-                        });
+                try {
+                    const updateData = {
+                        status,
+                        changedBy: currentAdmin ? currentAdmin.name : 'Admin',
+                        remarks: remarks
+                    };
 
-                        if (response.success) {
-                            showSuccessMessage(response.message);
-                            closeJobStatusModal();
-                            await loadJobTracking();
-                        } else {
-                            showErrorMessage('Failed to update job status');
-                        }
-                    } catch (error) {
-                        console.error('Error updating job status:', error);
-                        showErrorMessage(error.message);
+                    const response = await apiCall(`/admin/job-entries/${jobId}/status`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(updateData)
+                    });
+
+                    if (response.success) {
+                        showSuccessMessage(response.message);
+                        closeJobStatusModal();
+                        await loadJobTracking();
+                    } else {
+                        showErrorMessage('Failed to update job status');
                     }
-                });
-            }
-        }, 1000);
+                } catch (error) {
+                    console.error('Error updating job status:', error);
+                    showErrorMessage(error.message);
+                }
+            });
+        }
+    }, 1000);
 
+    // Check authentication status last
+    setTimeout(() => {
         checkAuthStatus();
-    });
+    }, 1500);
 });
+
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(() => {
+        const jobStatusForm = document.getElementById('jobStatusForm');
+        if (jobStatusForm) {
+            jobStatusForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const jobId = document.getElementById('currentJobId').value;
+                const status = document.getElementById('jobStatus').value;
+                const remarks = document.getElementById('jobRemarks').value;
+
+                try {
+                    const updateData = {
+                        status,
+                        changedBy: currentAdmin ? currentAdmin.name : 'Admin',
+                        remarks: remarks
+                    };
+
+                    const response = await apiCall(`/admin/job-entries/${jobId}/status`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(updateData)
+                    });
+
+                    if (response.success) {
+                        showSuccessMessage(response.message);
+                        closeJobStatusModal();
+                        await loadJobTracking();
+                    } else {
+                        showErrorMessage('Failed to update job status');
+                    }
+                } catch (error) {
+                    console.error('Error updating job status:', error);
+                    showErrorMessage(error.message);
+                }
+            });
+        }
+    }, 1000);
+
+    checkAuthStatus();
+});
+
 
 const enhancedStyles = `
     .job-hold-row {
@@ -249,6 +318,335 @@ function updateJobTrackingHTML() {
     }
 }
 
+function safeSetContent(elementId, content, property = 'textContent') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element[property] = content;
+        return true;
+    } else {
+        console.warn(`Element with ID '${elementId}' not found`);
+        return false;
+    }
+}
+
+function safeAddEventListener(elementId, event, callback) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.addEventListener(event, callback);
+        return true;
+    } else {
+        console.warn(`Element with ID '${elementId}' not found for event '${event}'`);
+        return false;
+    }
+}
+
+// SOLUTION 9: Fix the line causing error at script.js:4995:39
+// This appears to be related to event listener setup, ensure this pattern is used:
+function safeDOMOperation() {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeAfterDOM);
+    } else {
+        initializeAfterDOM();
+    }
+}
+
+function initializeAfterDOM() {
+    // Perform DOM operations here with null checks
+    const elements = [
+        'taskFilter',
+        'userTaskStatusFilter',
+        'userTaskSortFilter',
+        'completedTaskFilter'
+    ];
+
+    elements.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            console.log(`✓ Found element: ${elementId}`);
+        } else {
+            console.warn(`✗ Missing element: ${elementId}`);
+        }
+    });
+}
+
+async function safeApiCall(endpoint, options = {}) {
+    try {
+        return await apiCall(endpoint, options);
+    } catch (error) {
+        console.error(`API call failed for ${endpoint}:`, error);
+
+        // Show user-friendly error message
+        const errorMessage = error.message || 'An unexpected error occurred';
+        showErrorMessage(`Error: ${errorMessage}`);
+
+        return null; // Return null instead of throwing
+    }
+}
+
+// Call the safe DOM operation function
+safeDOMOperation();
+
+function initializeEnhancedUI() {
+    console.log('Initializing enhanced UI...');
+
+    // Set minimum date for task creation to today
+    const today = new Date().toISOString().split('T')[0];
+    const dueDateInputs = ['taskDueDate', 'userTaskDueDate', 'requestedDueDate'];
+    dueDateInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.min = today;
+        }
+    });
+}
+
+function setupEnhancedEventListeners() {
+    console.log('Setting up enhanced event listeners...');
+
+    // Task delay form
+    const taskDelayForm = document.getElementById('taskDelayForm');
+    if (taskDelayForm) {
+        taskDelayForm.addEventListener('submit', handleTaskDelaySubmit);
+    }
+
+    // Enhanced task form
+    const enhancedTaskForm = document.getElementById('taskForm');
+    if (enhancedTaskForm) {
+        enhancedTaskForm.removeEventListener('submit', handleTaskSubmit); // Remove old listener
+        enhancedTaskForm.addEventListener('submit', handleEnhancedTaskSubmit);
+    }
+
+    // Enhanced user task form
+    const enhancedUserTaskForm = document.getElementById('userTaskForm');
+    if (enhancedUserTaskForm) {
+        enhancedUserTaskForm.removeEventListener('submit', handleUserTaskSubmit); // Remove old listener
+        enhancedUserTaskForm.addEventListener('submit', handleEnhancedUserTaskSubmit);
+    }
+}
+
+async function handleTaskDelaySubmit(e) {
+    e.preventDefault();
+
+    const taskId = document.getElementById('delayTaskId').value;
+    const requestedDueDate = document.getElementById('requestedDueDate').value;
+    const reason = document.getElementById('delayReason').value;
+
+    try {
+        showLoadingMessage('Submitting delay request...');
+
+        const response = await apiCall(`/admin/tasks/${taskId}/request-delay`, {
+            method: 'POST',
+            body: JSON.stringify({
+                requestedDueDate,
+                reason,
+                requestedBy: currentUser
+            })
+        });
+
+        hideLoadingMessage();
+
+        if (response.success) {
+            showSuccessMessage('Delay request submitted successfully!');
+            closeTaskDelayModal();
+            await loadUserTasks();
+        }
+    } catch (error) {
+        hideLoadingMessage();
+        console.error('Error submitting delay request:', error);
+        showErrorMessage(error.message);
+    }
+}
+
+
+async function handleEnhancedTaskSubmit(e) {
+    e.preventDefault();
+
+    const formData = new FormData();
+
+    // Basic task data
+    formData.append('title', document.getElementById('taskTitle').value);
+    formData.append('assignedTo', document.getElementById('taskAssignedTo').value);
+    formData.append('priority', document.getElementById('taskPriority').value);
+    formData.append('dueDate', document.getElementById('taskDueDate').value);
+    formData.append('description', document.getElementById('taskDescription').value);
+
+    // Parent task
+    const parentTask = document.getElementById('taskParentTask').value;
+    if (parentTask) {
+        formData.append('parentTask', parentTask);
+    }
+
+    // Middle level validation
+    const middleLevelValidator = document.getElementById('taskMiddleLevelValidator').value;
+    if (middleLevelValidator) {
+        formData.append('middleLevelValidator', middleLevelValidator);
+        formData.append('needsMiddleLevelValidation', 'true');
+    }
+
+    // Multiple assignees
+    const multipleAssignees = Array.from(document.getElementById('taskMultipleAssignees').selectedOptions)
+        .map(option => option.value);
+    if (multipleAssignees.length > 0) {
+        formData.append('assignedToMultiple', JSON.stringify([document.getElementById('taskAssignedTo').value, ...multipleAssignees]));
+    }
+
+    // Job entry fields
+    const soNumber = document.getElementById('taskSONumber').value;
+    if (soNumber) {
+        formData.append('soNumber', soNumber);
+        formData.append('stage', document.getElementById('taskStage').value || '');
+    }
+
+    // File upload
+    const fileInput = document.getElementById('taskDocument');
+    if (fileInput && fileInput.files[0]) {
+        formData.append('document', fileInput.files[0]);
+    }
+
+    // Privacy and super admin settings
+    if (currentUser) {
+        if (document.getElementById('taskAssignedTo').value === currentUser.id) {
+            formData.append('isPrivate', 'true');
+        }
+        if (currentUser.role === 'super_admin') {
+            formData.append('isSuperAdminTask', 'true');
+        }
+        formData.append('createdBy', JSON.stringify(currentUser));
+    }
+
+    const taskId = document.getElementById('taskId').value;
+
+    try {
+        showLoadingMessage('Saving task...');
+
+        let response;
+        if (taskId) {
+            // For updates, convert to JSON (no file updates for now)
+            const updateData = {};
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'document') { // Skip file for updates
+                    updateData[key] = value;
+                }
+            }
+
+            response = await apiCall(`/admin/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+        } else {
+            // For new tasks with file upload
+            response = await fetch(`${API_BASE_URL}/admin/tasks`, {
+                method: 'POST',
+                headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            response = await response.json();
+        }
+
+        hideLoadingMessage();
+
+        if (response.success || response.task) {
+            showSuccessMessage(taskId ? 'Task updated successfully!' : 'Task created successfully!');
+            closeTaskModal();
+            await loadTasks();
+        } else {
+            throw new Error(response.message || 'Failed to save task');
+        }
+    } catch (error) {
+        hideLoadingMessage();
+        console.error('Error saving task:', error);
+        showErrorMessage(error.message);
+    }
+}
+
+
+async function handleEnhancedUserTaskSubmit(e) {
+    e.preventDefault();
+
+    const formData = new FormData();
+
+    // Basic task data
+    formData.append('title', document.getElementById('userTaskTitle').value);
+    formData.append('assignedTo', document.getElementById('userTaskAssignedTo').value);
+    formData.append('priority', document.getElementById('userTaskPriority').value);
+    formData.append('dueDate', document.getElementById('userTaskDueDate').value);
+    formData.append('description', document.getElementById('userTaskDescription').value);
+    formData.append('notes', document.getElementById('userTaskNotes').value);
+    formData.append('assignedBy', currentUser.id);
+
+    // Multiple assignees
+    const multipleAssignees = Array.from(document.getElementById('userTaskMultipleAssignees').selectedOptions)
+        .map(option => option.value);
+    if (multipleAssignees.length > 0) {
+        formData.append('assignedToMultiple', JSON.stringify([document.getElementById('userTaskAssignedTo').value, ...multipleAssignees]));
+    }
+
+    // File upload
+    const fileInput = document.getElementById('userTaskDocument');
+    if (fileInput && fileInput.files[0]) {
+        formData.append('document', fileInput.files[0]);
+    }
+
+    const taskId = document.getElementById('userTaskId').value;
+
+    try {
+        showLoadingMessage('Saving task...');
+
+        let response;
+        if (taskId) {
+            // For updates
+            const updateData = {};
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'document') {
+                    updateData[key] = value;
+                }
+            }
+
+            response = await apiCall(`/user/user-tasks/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+        } else {
+            // For new tasks
+            response = await fetch(`${API_BASE_URL}/user/user-tasks`, {
+                method: 'POST',
+                headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            response = await response.json();
+        }
+
+        hideLoadingMessage();
+
+        if (response.success || response.tasks) {
+            const message = response.tasks
+                ? `Task(s) assigned successfully to ${response.tasks.length} user(s)!`
+                : 'Task updated successfully!';
+            showSuccessMessage(message);
+            closeUserTaskModal();
+            await loadUserAssignedTasks();
+        } else {
+            throw new Error(response.message || 'Failed to save task');
+        }
+    } catch (error) {
+        hideLoadingMessage();
+        console.error('Error saving user task:', error);
+        showErrorMessage(error.message);
+    }
+}
 
 
 
@@ -341,8 +739,6 @@ async function handleJobStatusSubmit(e) {
 
 
 function setupJobStatusForm() {
-
-
     // Add event listener with proper error handling
     document.addEventListener('submit', function (e) {
         if (e.target.id === 'jobStatusForm') {
@@ -369,9 +765,48 @@ function toggleRemoveDropdown() {
     }
 }
 
+function checkAuthStatus() {
+    console.log('Checking authentication status...');
+
+    const savedAuth = sessionStorage.getItem('scrumflow_auth');
+    if (savedAuth) {
+        try {
+            const authData = JSON.parse(savedAuth);
+            console.log('Found saved auth:', authData);
+
+            // Set the auth token
+            authToken = authData.token;
+
+            if (authData.type === 'admin') {
+                currentAdmin = authData.user;
+                userType = 'admin';
+                showAdminDashboard();
+            } else {
+                currentUser = authData.user;
+                userType = 'user';
+                showUserDashboard();
+            }
+        } catch (error) {
+            console.error('Error parsing saved auth:', error);
+            sessionStorage.removeItem('scrumflow_auth');
+            authToken = null;
+            showLoginForm(); // Call the function instead of throwing error
+        }
+    } else {
+        console.log('No saved authentication found');
+        showLoginForm(); // Call the function instead of throwing error
+    }
+}
+
+// 3. Fix setupEventListeners with better element checking
 function setupEventListeners() {
-    // Login form
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    console.log('Setting up event listeners...');
+
+    // Login form - add null check
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
 
     // Navigation for admin
     document.querySelectorAll('#adminDashboard .nav-link').forEach(link => {
@@ -383,11 +818,52 @@ function setupEventListeners() {
         link.addEventListener('click', (e) => handleUserNavigation(e));
     });
 
-    // Forms
-    document.getElementById('userForm').addEventListener('submit', handleUserSubmit);
-    document.getElementById('taskForm').addEventListener('submit', handleTaskSubmit);
+    // Forms with null checks
+    const userForm = document.getElementById('userForm');
+    if (userForm) {
+        userForm.addEventListener('submit', handleUserSubmit);
+    }
 
-    // Add null checks for optional elements
+    const taskForm = document.getElementById('taskForm');
+    if (taskForm) {
+        taskForm.addEventListener('submit', handleTaskSubmit);
+    }
+
+    // Filter elements with null checks
+    const taskFilter = document.getElementById('taskFilter');
+    if (taskFilter) {
+        taskFilter.addEventListener('change', filterTasks);
+        console.log('✓ Found element: taskFilter');
+    } else {
+        console.log('✗ Missing element: taskFilter');
+    }
+
+    const completedTaskFilter = document.getElementById('completedTaskFilter');
+    if (completedTaskFilter) {
+        completedTaskFilter.addEventListener('change', filterCompletedTasks);
+        console.log('✓ Found element: completedTaskFilter');
+    } else {
+        console.log('✗ Missing element: completedTaskFilter');
+    }
+
+    // User task filters - these seem to be missing from your HTML
+    const userTaskStatusFilter = document.getElementById('userTaskStatusFilter');
+    if (userTaskStatusFilter) {
+        userTaskStatusFilter.addEventListener('change', filterUserTasks);
+        console.log('✓ Found element: userTaskStatusFilter');
+    } else {
+        console.log('✗ Missing element: userTaskStatusFilter');
+    }
+
+    const userTaskSortFilter = document.getElementById('userTaskSortFilter');
+    if (userTaskSortFilter) {
+        userTaskSortFilter.addEventListener('change', filterUserTasks);
+        console.log('✓ Found element: userTaskSortFilter');
+    } else {
+        console.log('✗ Missing element: userTaskSortFilter');
+    }
+
+    // Add other optional filters with null checks
     const userAssignedTaskFilter = document.getElementById('userAssignedTaskFilter');
     if (userAssignedTaskFilter) {
         userAssignedTaskFilter.addEventListener('change', loadAdminUserAssignedTasks);
@@ -402,32 +878,6 @@ function setupEventListeners() {
     if (assigneeFilter) {
         assigneeFilter.addEventListener('change', loadAdminUserAssignedTasks);
     }
-
-    // Filter
-    const taskFilter = document.getElementById('taskFilter');
-    if (taskFilter) {
-        taskFilter.addEventListener('change', filterTasks);
-    }
-
-    const userTaskForm = document.getElementById('userTaskForm');
-    if (userTaskForm) {
-        userTaskForm.addEventListener('submit', handleUserTaskSubmit);
-    }
-
-    const userTaskFilter = document.getElementById('userTaskFilter');
-    if (userTaskFilter) {
-        userTaskFilter.addEventListener('change', () => {
-            loadUserAssignedTasks();
-        });
-    }
-
-    // Add delay for manual job form
-    setTimeout(() => {
-        const manualJobForm = document.getElementById('manualJobEntryForm');
-        if (manualJobForm) {
-            manualJobForm.addEventListener('submit', handleManualJobEntrySubmit);
-        }
-    }, 1000);
 }
 
 
@@ -643,26 +1093,38 @@ async function handleLogin(e) {
         const data = await response.json();
 
         if (response.ok && data.success) {
+            // CRITICAL FIX: Ensure user object has id field
+            if (!data.user || !data.user.id) {
+                throw new Error('Invalid user data received from server');
+            }
+
             // Show success message
             document.getElementById('loginSuccess').style.display = 'flex';
 
-            // Store auth data
+            // Store auth data with proper validation
             const authData = {
-                user: data.user,
+                user: {
+                    id: data.user.id,
+                    username: data.user.username,
+                    email: data.user.email,
+                    name: data.user.name,
+                    role: data.user.role
+                },
                 token: data.token,
                 type: data.user.role === 'admin' || data.user.role === 'super_admin' ? 'admin' : 'user',
                 timestamp: Date.now()
             };
 
             sessionStorage.setItem('scrumflow_auth', JSON.stringify(authData));
+            authToken = data.token;
 
             setTimeout(() => {
                 if (data.user.role === 'admin' || data.user.role === 'super_admin') {
-                    currentAdmin = data.user;
+                    currentAdmin = authData.user;
                     userType = 'admin';
                     showAdminDashboard();
                 } else {
-                    currentUser = data.user;
+                    currentUser = authData.user;
                     userType = 'user';
                     showUserDashboard();
                 }
@@ -672,22 +1134,23 @@ async function handleLogin(e) {
         }
     } catch (error) {
         console.error('Login error:', error);
-        showErrorMessage('Invalid credentials. Please try again.');
+        showErrorMessage('Login failed: ' + error.message);
     }
 }
 
 
 function logout() {
+    console.log('Logging out user...');
+
+    // Clear all authentication data
     sessionStorage.removeItem('scrumflow_auth');
     authToken = null;
-    currentAdmin = null;
     currentUser = null;
+    currentAdmin = null;
     userType = null;
 
-    document.getElementById('adminDashboard').classList.remove('active');
-    document.getElementById('userDashboard').classList.remove('active');
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('loginForm').reset();
+    // Redirect to login
+    showLoginForm();
 }
 
 // Dashboard Management
@@ -736,11 +1199,13 @@ function showSection(sectionName) {
 function showUserSection(sectionName) {
     // Update active nav
     document.querySelectorAll('#userDashboard .nav-link').forEach(link => link.classList.remove('active'));
-    document.querySelector(`#userDashboard .nav-link[data-section="${sectionName}"]`).classList.add('active');
+    const activeLink = document.querySelector(`#userDashboard .nav-link[data-section="${sectionName}"]`);
+    if (activeLink) activeLink.classList.add('active');
 
     // Show target section
     document.querySelectorAll('#userDashboard .content-section').forEach(section => section.classList.remove('active'));
-    document.getElementById(sectionName).classList.add('active');
+    const targetSection = document.getElementById(sectionName);
+    if (targetSection) targetSection.classList.add('active');
 
     // Load section-specific data
     loadUserSectionData(sectionName);
@@ -760,25 +1225,108 @@ async function loadAdminDashboardData() {
     }
 }
 
+// =============================================================================
+// BUG FIXES FOR AUTHENTICATION AND API ISSUES
+// =============================================================================
+
+function validateTeamMemberData(member) {
+    if (!member || typeof member !== 'object') {
+        console.log('Invalid team member data: Object is null or not an object', member);
+        return false;
+    }
+
+    if (!member._id || !member.name) {
+        console.log('Invalid team member data: Missing required fields (_id or name)', member);
+        return false;
+    }
+
+    return true;
+}
+
+// 9. Fix loadUserDashboardData with better error handling
 async function loadUserDashboardData() {
+    if (!currentUser || !currentUser.id) {
+        console.error('No current user found for dashboard data');
+        showErrorMessage('User not authenticated');
+        return;
+    }
+
+    console.log('Loading user dashboard data for user ID:', currentUser.id);
+
     try {
-        await Promise.all([
-            loadUserStats(),
-            loadUserTasks(),
-            loadUserTaskStats()
-        ]);
+        // Load data in parallel but handle errors individually
+        const promises = [
+            loadUserStats().catch(error => {
+                console.error('Error loading user stats:', error);
+                return null;
+            }),
+            loadUserTasks().catch(error => {
+                console.error('Error loading user tasks:', error);
+                return null;
+            }),
+            loadUserTaskStats().catch(error => {
+                console.error('Error loading user task stats:', error);
+                return null;
+            })
+        ];
+
+        await Promise.allSettled(promises);
+        console.log('User dashboard data loading completed');
     } catch (error) {
-        console.error('Error loading user dashboard:', error);
+        console.error('Error in loadUserDashboardData:', error);
+        showErrorMessage('Error loading dashboard data');
     }
 }
 
 async function loadUserTaskStats() {
     try {
+        if (!currentUser || !currentUser.id) {
+            console.error('No current user found for loading task stats');
+            return;
+        }
+
+        console.log('Loading user task stats for user ID:', currentUser.id);
         const stats = await apiCall(`/user/${currentUser.id}/user-task-stats`);
-        // You can display these stats somewhere if needed
-        console.log('User task stats:', stats);
+
+        // Update UI elements if they exist
+        const assignedByMeElement = document.getElementById('assignedByMe');
+        if (assignedByMeElement) {
+            assignedByMeElement.textContent = stats.assignedByMe || 0;
+        }
+
+        const assignedToMeElement = document.getElementById('assignedToMe');
+        if (assignedToMeElement) {
+            assignedToMeElement.textContent = stats.assignedToMe || 0;
+        }
+
+        const assignedCompletionRateElement = document.getElementById('assignedCompletionRate');
+        if (assignedCompletionRateElement) {
+            assignedCompletionRateElement.textContent = `${stats.assignedCompletionRate || 0}%`;
+        }
+
+        const receivedCompletionRateElement = document.getElementById('receivedCompletionRate');
+        if (receivedCompletionRateElement) {
+            receivedCompletionRateElement.textContent = `${stats.receivedCompletionRate || 0}%`;
+        }
+
+        console.log('User task stats loaded successfully:', stats);
     } catch (error) {
         console.error('Error loading user task stats:', error);
+        // Don't throw the error, just log it and continue
+        // Set default values if elements exist
+        const defaultElements = [
+            { id: 'assignedByMe', value: '0' },
+            { id: 'assignedToMe', value: '0' },
+            { id: 'assignedCompletionRate', value: '0%' },
+            { id: 'receivedCompletionRate', value: '0%' }
+        ];
+
+        defaultElements.forEach(elem => {
+            const element = document.getElementById(elem.id);
+            if (element) {
+                element.textContent = elem.value;
+            }
+        });
     }
 }
 
@@ -786,9 +1334,12 @@ async function loadUserTaskStats() {
 
 
 async function loadUserSectionData(section) {
+    console.log('Loading user section:', section);
+
     switch (section) {
         case 'my-sprints':
             await loadUserTasks();
+            await loadUserStats();
             break;
         case 'my-progress':
             await loadUserProgress();
@@ -805,24 +1356,116 @@ async function loadUserSectionData(section) {
 
 async function loadUserAssignedTasks() {
     try {
+        console.log('Loading tasks assigned by user...');
         const tasks = await apiCall(`/user/${currentUser.id}/assigned-user-tasks`);
-        renderUserAssignedTasks(tasks);
+        renderUserAssignedTasksTable(tasks);
         updateUserAssignedStats(tasks);
     } catch (error) {
         console.error('Error loading user assigned tasks:', error);
-        document.querySelector('#userAssignedTasksTable tbody').innerHTML =
-            '<tr><td colspan="7" style="text-align: center; color: #666; padding: 40px;">Error loading tasks</td></tr>';
+        const tbody = document.querySelector('#userAssignedTasksTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666; padding: 40px;">Error loading tasks</td></tr>';
+        }
     }
 }
+
+function renderUserAssignedTasksTable(tasks) {
+    const tbody = document.querySelector('#userAssignedTasksTable tbody');
+    const filter = document.getElementById('userTaskFilter')?.value || '';
+
+    let filteredTasks = tasks;
+    if (filter) {
+        filteredTasks = applyUserTaskFilter(tasks, filter);
+    }
+
+    if (filteredTasks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666; padding: 40px;">No tasks found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filteredTasks.map(task => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dueDate = new Date(task.dueDate);
+        const taskDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+        const isSelfAssigned = task.assignedTo === currentUser.id;
+        const assignedToDisplay = isSelfAssigned ?
+            `${task.assignedToName} <span style="color: #667eea; font-weight: 500;">(Me)</span>` :
+            task.assignedToName;
+
+        let statusClass = task.status;
+        if ((task.status === 'pending' || task.status === 'in_progress') && taskDueDate < today) {
+            statusClass = 'overdue';
+        }
+
+        return `
+            <tr>
+                <td>
+                    <div class="task-title">${task.title}</div>
+                    ${task.description ? `<div class="task-description">${task.description.substring(0, 100)}...</div>` : ''}
+                    ${task.attachedDocument ? `<div style="color: #28a745; font-size: 0.85rem; margin-top: 5px;"><i class="fas fa-paperclip"></i> Document attached</div>` : ''}
+                </td>
+                <td>${assignedToDisplay}</td>
+                <td><span class="priority-badge priority-${task.priority}">${task.priority.toUpperCase()}</span></td>
+                <td>
+                    <div style="color: ${taskDueDate < today && task.status !== 'completed' ? '#dc3545' : 'inherit'};">
+                        ${dueDate.toLocaleDateString()}
+                        ${taskDueDate < today && task.status !== 'completed' ? ' ⚠️' : ''}
+                    </div>
+                </td>
+                <td><span class="status-badge status-${statusClass}">${statusClass.replace('_', ' ').toUpperCase()}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="background: #e0e0e0; border-radius: 10px; height: 8px; flex: 1;">
+                            <div style="background: ${getProgressColor(task.progress)}; height: 100%; width: ${task.progress || 0}%; transition: width 0.3s ease;"></div>
+                        </div>
+                        <small>${task.progress || 0}%</small>
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="action-btn btn-edit" onclick="editUserTask('${task._id}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${task.status !== 'completed' ? `
+                            <button class="action-btn btn-complete" onclick="markUserTaskComplete('${task._id}')" title="Mark Complete">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        ` : ''}
+                        ${task.attachedDocument ? `
+                            <button class="action-btn btn-view" onclick="downloadUserTaskDocument('${task._id}', '${task.attachedDocument.originalName}')" title="Download Document">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        ` : ''}
+                        <button class="action-btn btn-delete" onclick="deleteUserTask('${task._id}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+
 async function loadReceivedUserTasks() {
+    if (!currentUser || !currentUser.id) {
+        console.error('Cannot load received user tasks: currentUser.id is undefined');
+        return;
+    }
+
     try {
+        console.log('Loading received user tasks for user ID:', currentUser.id);
         const tasks = await apiCall(`/user/${currentUser.id}/received-user-tasks`);
         renderReceivedUserTasks(tasks);
         updateReceivedUserStats(tasks);
     } catch (error) {
         console.error('Error loading received user tasks:', error);
-        document.getElementById('receivedUserTasksContainer').innerHTML =
-            '<p style="color: #666; text-align: center; padding: 40px;">Error loading tasks</p>';
+        const container = document.getElementById('receivedUserTasksContainer');
+        if (container) {
+            container.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 40px;">Error loading tasks. Please refresh the page.</p>';
+        }
     }
 }
 
@@ -944,22 +1587,40 @@ function renderReceivedUserTasks(tasks) {
 
 async function loadTeamMembersForAssignment() {
     try {
-        const users = await apiCall('/user/team-members');
-        const dropdown = document.getElementById('userTaskAssignedTo');
+        const teamMembers = await apiCall('/user/team-members');
+        const selectElement = document.getElementById('userTaskAssignedTo');
 
-        // Include ALL users including current user for self-assignment
-        dropdown.innerHTML = '<option value="">Select Team Member</option>' +
-            users.map(user => {
-                // Add "(Me)" indicator for current user
-                const displayName = user._id === currentUser.id
-                    ? `${user.name} (Me)`
-                    : `${user.name}`;
-                return `<option value="${user._id}">${displayName} (${user.role})</option>`;
-            }).join('');
+        if (!selectElement) {
+            console.error('userTaskAssignedTo select element not found');
+            return;
+        }
+
+        // Clear existing options
+        selectElement.innerHTML = '<option value="">Select Team Member</option>';
+
+        // Check if teamMembers is valid and has the expected structure
+        if (!teamMembers || !Array.isArray(teamMembers)) {
+            console.error('Invalid team members data:', teamMembers);
+            return;
+        }
+
+        teamMembers.forEach(member => {
+            // Add null checks for member properties
+            if (member && member.id && member.name) {
+                const option = document.createElement('option');
+                option.value = member.id;
+                option.textContent = member.name;
+                selectElement.appendChild(option);
+            } else {
+                console.warn('Invalid team member data:', member);
+            }
+        });
+
     } catch (error) {
         console.error('Error loading team members:', error);
     }
 }
+
 // Render user assigned tasks table
 function renderUserAssignedTasks(tasks) {
     const tbody = document.querySelector('#userAssignedTasksTable tbody');
@@ -1116,7 +1777,6 @@ function updateReceivedUserStats(tasks) {
 function openUserTaskModal(taskId = null) {
     const modal = document.getElementById('userTaskModal');
     const form = document.getElementById('userTaskForm');
-    loadTeamMembersForAssignment();
 
     if (taskId) {
         document.getElementById('userTaskModalTitle').textContent = 'Edit Task';
@@ -1129,22 +1789,49 @@ function openUserTaskModal(taskId = null) {
         document.getElementById('userTaskId').value = '';
     }
 
+    // Load team members
+    loadTeamMembersForAssignment();
     modal.classList.add('active');
 }
+
+function isTaskOnTime(completedDate, dueDate) {
+    const completed = new Date(completedDate);
+    const due = new Date(dueDate);
+
+    // Set both to end of day for comparison
+    const completedEnd = new Date(completed.getFullYear(), completed.getMonth(), completed.getDate(), 23, 59, 59, 999);
+    const dueEnd = new Date(due.getFullYear(), due.getMonth(), due.getDate(), 23, 59, 59, 999);
+
+    return completedEnd <= dueEnd;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(() => {
+        // Remove old event listeners and add new ones
+        const taskForm = document.getElementById('taskForm');
+        if (taskForm) {
+            taskForm.addEventListener('submit', handleEnhancedTaskSubmit);
+        }
+
+        const userTaskForm = document.getElementById('userTaskForm');
+        if (userTaskForm) {
+            userTaskForm.addEventListener('submit', handleEnhancedUserTaskSubmit);
+        }
+
+        // Initialize dropdowns
+        populateTaskDropdowns();
+        loadTeamMembersForAssignment();
+    }, 1500);
+});
 
 // Close user task modal
 function closeJobStatusModal() {
     const modal = document.getElementById('jobStatusModal');
     if (modal) {
-        modal.classList.remove('active');
-    }
-
-    // Clear form if it exists
-    const form = document.getElementById('jobStatusForm');
-    if (form) {
-        form.reset();
+        modal.style.display = 'none';
     }
 }
+
 
 // Mark user assigned task as complete
 async function markUserTaskComplete(taskId) {
@@ -1174,10 +1861,11 @@ function openCompletionRequestModal(taskId) {
 
 // Function to close completion request modal
 function closeCompletionRequestModal() {
-    document.getElementById('completionRequestModal').classList.remove('active');
-    document.getElementById('completionRequestForm').reset();
+    const modal = document.getElementById('completionRequestModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
-
 // Mark received user task as complete
 async function markReceivedUserTaskComplete(taskId) {
     if (confirm('Are you sure you want to mark this task as completed?')) {
@@ -1256,15 +1944,48 @@ async function loadStats() {
     }
 }
 
+function safeElementUpdate(elementId, value, defaultValue = '') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = value;
+    } else {
+        console.warn(`Element with ID '${elementId}' not found`);
+    }
+}
+
 async function loadUserStats() {
+    if (!currentUser || !currentUser.id) {
+        console.error('Cannot load user stats: currentUser.id is undefined');
+        return;
+    }
+
     try {
+        console.log('Loading user stats for user ID:', currentUser.id);
         const stats = await apiCall(`/user/${currentUser.id}/stats`);
-        document.getElementById('myTotalTasks').textContent = stats.totalTasks || 0;
-        document.getElementById('myPendingTasks').textContent = stats.pendingTasks || 0;
-        document.getElementById('myCompletedTasks').textContent = stats.completedTasks || 0;
-        document.getElementById('myCompletionRate').textContent = `${stats.completionRate || 0}%`;
+
+        // Update UI elements safely
+        const elements = {
+            'myTotalTasks': stats.totalTasks || 0,
+            'myPendingTasks': stats.pendingTasks || 0,
+            'myCompletedTasks': stats.completedTasks || 0,
+            'myCompletionRate': `${stats.completionRate || 0}%`
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
     } catch (error) {
         console.error('Error loading user stats:', error);
+        // Set default values to prevent UI from breaking
+        ['myTotalTasks', 'myPendingTasks', 'myCompletedTasks'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = '0';
+        });
+        const rateElement = document.getElementById('myCompletionRate');
+        if (rateElement) rateElement.textContent = '0%';
     }
 }
 
@@ -1631,72 +2352,69 @@ async function rejectTaskCompletion(taskId) {
 
 async function loadUserTasks() {
     try {
+        if (!currentUser || !currentUser.id) {
+            console.error('No current user found for loading tasks');
+            return;
+        }
+
+        console.log('Loading user tasks for user ID:', currentUser.id);
         const tasks = await apiCall(`/user/${currentUser.id}/tasks`);
-        allUserTasks = tasks;
 
-        // Apply default filter (pending) and render
-        filterUserTasks();
+        // Check if table body exists before trying to populate it
+        const tableBody = document.querySelector('#userTasksTable tbody');
+        if (!tableBody) {
+            console.log('User tasks table body not found');
+            return;
+        }
 
+        // Clear existing content
+        tableBody.innerHTML = '';
+
+        if (!tasks || tasks.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">No tasks assigned</td></tr>';
+            return;
+        }
+
+        // Populate table
+        tasks.forEach(task => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${task.title}</td>
+                <td><span class="status-badge status-${task.status}">${task.status.replace('_', ' ')}</span></td>
+                <td><span class="priority-badge priority-${task.priority}">${task.priority}</span></td>
+                <td>${new Date(task.dueDate).toLocaleDateString()}</td>
+                <td>${task.assignedByName || 'Unknown'}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="viewTask('${task._id}')">View</button>
+                    ${task.status === 'pending' || task.status === 'in_progress' ?
+                    `<button class="btn btn-success btn-sm" onclick="requestCompletion('${task._id}')">Request Completion</button>` :
+                    ''
+                }
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        console.log('User tasks loaded successfully:', tasks.length, 'tasks');
     } catch (error) {
         console.error('Error loading user tasks:', error);
-        document.getElementById('myTasksContainer').innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">Error loading tasks</p>';
+        const tableBody = document.querySelector('#userTasksTable tbody');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">Error loading tasks: ' + error.message + '</td></tr>';
+        }
     }
 }
 
 
-// Request task delay
-async function requestTaskDelay(taskId) {
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.innerHTML = `
-        <div class="modal-content glass-dark">
-            <div class="modal-header">
-                <h3>Request Task Delay</h3>
-                <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
-            </div>
-            <form id="delayRequestForm">
-                <div class="form-group">
-                    <label for="requestedDueDate">New Due Date</label>
-                    <input type="date" id="requestedDueDate" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="delayReason">Reason for Delay</label>
-                    <textarea id="delayReason" class="form-control" rows="3" required 
-                              placeholder="Please provide a valid reason for the delay request..."></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-clock"></i> Submit Delay Request
-                </button>
-            </form>
-        </div>
-    `;
 
-    document.body.appendChild(modal);
+function requestTaskDelay(taskId) {
+    document.getElementById('delayTaskId').value = taskId;
+    document.getElementById('taskDelayModal').classList.add('active');
 
-    document.getElementById('delayRequestForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const requestData = {
-            requestedDueDate: document.getElementById('requestedDueDate').value,
-            reason: document.getElementById('delayReason').value,
-            requestedBy: currentUser || currentAdmin
-        };
-
-        try {
-            const response = await apiCall(`/admin/tasks/${taskId}/request-delay`, {
-                method: 'POST',
-                body: JSON.stringify(requestData)
-            });
-
-            if (response.success) {
-                showSuccessMessage('Delay request submitted successfully!');
-                modal.remove();
-                await loadUserTasks();
-            }
-        } catch (error) {
-            showErrorMessage(error.message);
-        }
-    });
+    // Set minimum date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('requestedDueDate').min = tomorrow.toISOString().split('T')[0];
 }
 
 // Approve/Reject delay request
@@ -2030,96 +2748,165 @@ function renderUserTasks(tasks) {
     const container = document.getElementById('myTasksContainer');
 
     if (tasks.length === 0) {
-        const statusFilter = document.getElementById('userTaskStatusFilter').value;
+        const statusFilter = document.getElementById('userTaskStatusFilter')?.value || 'pending';
         const filterMessage = getFilterMessage(statusFilter);
         container.innerHTML = `<p style="color: #666; text-align: center; padding: 40px;">No ${filterMessage} found</p>`;
         return;
     }
 
-    container.innerHTML = tasks.map(task => {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const dueDate = new Date(task.dueDate);
-        const taskDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+    // Group tasks by parent task or SO number
+    const groupedTasks = groupTasksByParent(tasks);
 
-        let statusColor = '';
-        let status = task.status;
-        let dateDisplay = dueDate.toLocaleDateString();
+    let html = '';
 
-        const isOverdue = (task.status === 'pending' || task.status === 'in_progress') && taskDueDate < today;
-        const isDueToday = taskDueDate.getTime() === today.getTime();
+    Object.keys(groupedTasks).forEach(groupName => {
+        const groupTasks = groupedTasks[groupName];
 
-        if (isOverdue) {
-            status = 'overdue';
-            statusColor = 'border-left-color: #dc3545;';
-            dateDisplay += ' ⚠️ OVERDUE';
-        } else if (status === 'pending_approval') {
-            statusColor = 'border-left-color: #ffc107;';
-        } else if (isDueToday && (task.status === 'pending' || task.status === 'in_progress')) {
-            dateDisplay += ' 📅 DUE TODAY';
-            statusColor = 'border-left-color: #ffc107;';
+        html += `
+            <div class="task-group" style="margin-bottom: 30px;">
+                <div class="task-group-header" style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">
+                    <h3 style="margin: 0; color: #667eea; font-size: 1.2rem;">
+                        <i class="fas fa-folder"></i> ${groupName}
+                    </h3>
+                    <small style="color: #888;">${groupTasks.length} task(s)</small>
+                </div>
+                <div class="task-group-tasks">
+                    ${groupTasks.map(task => renderSingleUserTask(task)).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function groupTasksByParent(tasks) {
+    const groups = {};
+
+    tasks.forEach(task => {
+        let groupName;
+
+        if (task.parentTaskName) {
+            groupName = task.parentTaskName;
+        } else if (task.soNumber) {
+            groupName = `SO# ${task.soNumber} Tasks`;
+        } else {
+            groupName = 'Individual Tasks';
         }
 
-        return `
-                    <div class="sprint-card priority-${task.priority}" style="${statusColor}">
-                        <div class="sprint-header">
-                            <div class="sprint-title">${task.title}</div>
-                            <div class="sprint-due" style="color: ${isOverdue ? '#dc3545' : 'inherit'};">
-                                Due: ${dateDisplay}
-                            </div>
-                        </div>
-                        <div class="sprint-description">${task.description || 'No description'}</div>
-                        
-                        <!-- Task metadata -->
-                        <div style="margin: 10px 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #666;">
-                            <span>Created: ${new Date(task.createdAt).toLocaleDateString()}</span>
-                            <span class="priority-badge priority-${task.priority}">${task.priority.toUpperCase()}</span>
-                        </div>
-                        
-                        <div class="sprint-progress">
-                            <div class="sprint-progress-bar" style="width: ${task.progress || 0}%"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
-                            <span style="color: #666; font-size: 0.9rem;">${task.progress || 0}% Complete</span>
-                        </div>
-                        
-                        ${task.status !== 'completed' && task.status !== 'pending_approval' ? `
-                            <div style="margin-top: 15px;">
-                                <button class="btn btn-success" onclick="requestTaskCompletion('${task._id}')" style="width: 100%; padding: 10px;">
-                                    <i class="fas fa-check-circle"></i> Request Completion
-                                </button>
-                            </div>
-                        ` : ''}
-                        
-                        ${task.status === 'pending_approval' ? `
-                            <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 8px; text-align: center;">
-                                <i class="fas fa-clock" style="color: #856404;"></i>
-                                <span style="color: #856404; font-weight: 500;">Awaiting Admin Approval</span>
-                                ${task.completedAt ? `
-                                    <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
-                                        Completed: ${new Date(task.completedAt).toLocaleString()}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        ` : ''}
-                        
-                        ${task.status === 'completed' ? `
-                            <div style="margin-top: 15px; padding: 10px; background: #d4edda; border-radius: 8px; text-align: center;">
-                                <i class="fas fa-check-circle" style="color: #155724;"></i>
-                                <span style="color: #155724; font-weight: 500;">
-                                    Completed ${task.isOnTime ? 'On Time' : 'Late'}
-                                </span>
-                                ${task.completedAt ? `
-                                    <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
-                                        ${new Date(task.completedAt).toLocaleString()}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        ` : ''}
+        if (!groups[groupName]) {
+            groups[groupName] = [];
+        }
+        groups[groupName].push(task);
+    });
+
+    return groups;
+}
+
+function renderSingleUserTask(task) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueDate = new Date(task.dueDate);
+    const taskDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+    let statusColor = '';
+    let status = task.status;
+    let dateDisplay = dueDate.toLocaleDateString();
+
+    const isOverdue = (task.status === 'pending' || task.status === 'in_progress') && taskDueDate < today;
+    const isDueToday = taskDueDate.getTime() === today.getTime();
+
+    if (isOverdue) {
+        status = 'overdue';
+        statusColor = 'border-left-color: #dc3545;';
+        dateDisplay += ' ⚠️ OVERDUE';
+    } else if (status === 'pending_approval') {
+        statusColor = 'border-left-color: #ffc107;';
+    } else if (status === 'pending_middle_validation') {
+        statusColor = 'border-left-color: #17a2b8;';
+        status = 'pending validation';
+    } else if (isDueToday && (task.status === 'pending' || task.status === 'in_progress')) {
+        dateDisplay += ' 📅 DUE TODAY';
+        statusColor = 'border-left-color: #ffc107;';
+    }
+
+    return `
+        <div class="sprint-card priority-${task.priority}" style="${statusColor}">
+            <div class="sprint-header">
+                <div class="sprint-title">${task.title}</div>
+                <div class="sprint-due" style="color: ${isOverdue ? '#dc3545' : 'inherit'};">
+                    Due: ${dateDisplay}
+                </div>
+            </div>
+            <div class="sprint-description">${task.description || 'No description'}</div>
+            
+            ${task.attachedDocument ? `
+                <div style="background: #e8f5e8; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                    <i class="fas fa-paperclip" style="color: #28a745;"></i>
+                    <strong>Document:</strong> ${task.attachedDocument.originalName}
+                    <button onclick="downloadTaskDocument('${task._id}', '${task.attachedDocument.originalName}')" 
+                            style="background: none; border: none; color: #007bff; cursor: pointer; margin-left: 10px;">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+            ` : ''}
+            
+            <div style="margin: 10px 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #666;">
+                <span>Created: ${new Date(task.createdAt).toLocaleDateString()}</span>
+                <span class="priority-badge priority-${task.priority}">${task.priority.toUpperCase()}</span>
+            </div>
+            
+            <div class="sprint-progress">
+                <div class="sprint-progress-bar" style="width: ${task.progress || 0}%"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="status-badge status-${status.replace(' ', '_')}">${status.replace('_', ' ')}</span>
+                <span style="color: #666; font-size: 0.9rem;">${task.progress || 0}% Complete</span>
+            </div>
+            
+            ${task.needsMiddleLevelValidation && task.middleLevelValidationStatus === 'pending' ? `
+                <div style="margin-top: 15px; padding: 10px; background: #e1f5fe; border-radius: 8px; text-align: center;">
+                    <i class="fas fa-user-check" style="color: #0277bd;"></i>
+                    <span style="color: #0277bd; font-weight: 500;">Awaiting Middle Level Validation</span>
+                    <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
+                        Validator: ${task.middleLevelValidatorName}
                     </div>
-                `;
-    }).join('');
+                </div>
+            ` : ''}
+            
+            ${task.status !== 'completed' && task.status !== 'pending_approval' && task.status !== 'pending_middle_validation' ? `
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-success" onclick="requestTaskCompletion('${task._id}')" style="flex: 1; padding: 10px;">
+                        <i class="fas fa-check-circle"></i> Request Completion
+                    </button>
+                    <button class="btn btn-warning" onclick="requestTaskDelay('${task._id}')" style="padding: 10px;">
+                        <i class="fas fa-clock"></i> Request Delay
+                    </button>
+                </div>
+            ` : ''}
+            
+            ${task.status === 'pending_approval' ? `
+                <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 8px; text-align: center;">
+                    <i class="fas fa-clock" style="color: #856404;"></i>
+                    <span style="color: #856404; font-weight: 500;">Awaiting Admin Approval</span>
+                </div>
+            ` : ''}
+            
+            ${task.status === 'completed' ? `
+                <div style="margin-top: 15px; padding: 10px; background: #d4edda; border-radius: 8px; text-align: center;">
+                    <i class="fas fa-check-circle" style="color: #155724;"></i>
+                    <span style="color: #155724; font-weight: 500;">
+                        Completed ${task.isOnTime ? 'On Time' : 'Late'}
+                    </span>
+                    ${task.completedAt ? `
+                        <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
+                            ${new Date(task.completedAt).toLocaleString()}
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `;
 }
 // Get filter message for empty state
 function getFilterMessage(filter) {
@@ -2174,6 +2961,46 @@ function resetUserTaskFilters() {
     document.getElementById('userTaskSortFilter').value = 'due_date_asc';
     filterUserTasks();
     showSuccessMessage('Filters reset to default');
+}
+
+async function loadParentTasks() {
+    try {
+        const soNumber = document.getElementById('taskSONumber').value;
+        const url = soNumber ? `/admin/parent-tasks?soNumber=${soNumber}` : '/admin/parent-tasks';
+
+        const parentTasks = await apiCall(url);
+        const dropdown = document.getElementById('taskParentTask');
+
+        dropdown.innerHTML = '<option value="">Select Parent Task</option>';
+
+        Object.keys(parentTasks).forEach(soNumber => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = `SO# ${soNumber}`;
+
+            parentTasks[soNumber].forEach(task => {
+                const option = document.createElement('option');
+                option.value = task._id;
+                option.textContent = task.title;
+                optgroup.appendChild(option);
+            });
+
+            dropdown.appendChild(optgroup);
+        });
+    } catch (error) {
+        console.error('Error loading parent tasks:', error);
+    }
+}
+
+// Toggle job entry fields
+function toggleJobEntryFields() {
+    const fields = document.getElementById('jobEntryFields');
+    const isVisible = fields.style.display !== 'none';
+
+    fields.style.display = isVisible ? 'none' : 'block';
+
+    if (!isVisible) {
+        loadParentTasks();
+    }
 }
 
 
@@ -2337,21 +3164,62 @@ function closeUserModal() {
 }
 
 
-function openTaskModal(isSprintTask = false) {
+function openTaskModal(taskId = null) {
     const modal = document.getElementById('taskModal');
     const form = document.getElementById('taskForm');
 
-    document.getElementById('taskModalTitle').textContent = isSprintTask ? 'Add Sprint Task' : 'Add New Task';
-    document.getElementById('taskSubmitText').textContent = 'Save Task';
-    form.reset();
-    document.getElementById('taskId').value = '';
+    if (taskId) {
+        document.getElementById('taskModalTitle').textContent = 'Edit Task';
+        document.getElementById('taskSubmitText').textContent = 'Update Task';
+        loadTaskForEdit(taskId);
+    } else {
+        document.getElementById('taskModalTitle').textContent = 'Add New Task';
+        document.getElementById('taskSubmitText').textContent = 'Save Task';
+        form.reset();
+        document.getElementById('taskId').value = '';
+        document.getElementById('jobEntryFields').style.display = 'none';
+    }
+
+    // Load dropdowns
+    populateTaskDropdowns();
     modal.classList.add('active');
 }
+
+async function populateTaskDropdowns() {
+    try {
+        const users = await apiCall('/admin/users');
+        const activeUsers = users.filter(u => u.status === 'active');
+
+        // Primary assignee dropdown
+        const assigneeDropdown = document.getElementById('taskAssignedTo');
+        assigneeDropdown.innerHTML = '<option value="">Select User</option>' +
+            activeUsers.map(user => `<option value="${user._id}">${user.name} (${user.role})</option>`).join('');
+
+        // Multiple assignees dropdown
+        const multipleDropdown = document.getElementById('taskMultipleAssignees');
+        multipleDropdown.innerHTML = activeUsers.map(user =>
+            `<option value="${user._id}">${user.name} (${user.role})</option>`
+        ).join('');
+
+        // Middle level validator dropdown
+        const validatorDropdown = document.getElementById('taskMiddleLevelValidator');
+        validatorDropdown.innerHTML = '<option value="">No Middle Level Validation</option>' +
+            activeUsers.map(user => `<option value="${user._id}">${user.name} (${user.role})</option>`).join('');
+
+        // Load parent tasks
+        loadParentTasks();
+
+    } catch (error) {
+        console.error('Error loading task dropdowns:', error);
+    }
+}
+
 
 function closeTaskModal() {
     document.getElementById('taskModal').classList.remove('active');
     document.getElementById('taskForm').reset();
 }
+
 
 
 
@@ -2427,6 +3295,10 @@ function updateUserAssignedStats(tasks) {
 function closeUserTaskModal() {
     document.getElementById('userTaskModal').classList.remove('active');
     document.getElementById('userTaskForm').reset();
+}
+
+function closeMiddleLevelValidationModal() {
+    document.getElementById('middleLevelValidationModal').classList.remove('active');
 }
 
 // Form Handlers
@@ -3409,6 +4281,12 @@ function closeTaskDescriptionModal() {
     document.getElementById('taskDescriptionModal').classList.remove('active');
 }
 
+function closeTaskDelayModal() {
+    document.getElementById('taskDelayModal').classList.remove('active');
+    document.getElementById('taskDelayForm').reset();
+}
+
+
 // Populate user filters
 function populateUserFilters(tasks) {
     const assigners = [...new Set(tasks.map(task => task.assignedByName).filter(name => name))];
@@ -3781,16 +4659,28 @@ function filterCompletedTasks() {
 }
 
 function filterUserTasks() {
-    const statusFilter = document.getElementById('userTaskStatusFilter').value;
-    const sortFilter = document.getElementById('userTaskSortFilter').value;
+    const statusFilter = document.getElementById('userTaskStatusFilter');
+    const sortFilter = document.getElementById('userTaskSortFilter');
 
-    currentFilters.userTaskStatusFilter = statusFilter;
-    currentFilters.userTaskSortFilter = sortFilter;
+    // Check if elements exist before accessing their values
+    if (!statusFilter || !sortFilter) {
+        console.error('Filter elements not found:', {
+            statusFilter: !!statusFilter,
+            sortFilter: !!sortFilter
+        });
+        return;
+    }
 
-    filteredUserTasks = applyUserTaskStatusFilter(allUserTasks, statusFilter);
-    filteredUserTasks = applyUserTaskSorting(filteredUserTasks, sortFilter);
+    const statusValue = statusFilter.value;
+    const sortValue = sortFilter.value;
+
+    currentFilters.userTaskStatusFilter = statusValue;
+    currentFilters.userTaskSortFilter = sortValue;
+
+    filteredUserTasks = applyUserTaskStatusFilter(allUserTasks, statusValue);
+    filteredUserTasks = applyUserTaskSorting(filteredUserTasks, sortValue);
     renderUserTasks(filteredUserTasks);
-    updateUserTaskFilterInfo(statusFilter, filteredUserTasks.length, allUserTasks.length);
+    updateUserTaskFilterInfo(statusValue, filteredUserTasks.length, allUserTasks.length);
 }
 
 // Restore filters after any operation
@@ -4096,38 +4986,59 @@ async function loadSectionData(section) {
     }
 }
 
-function checkAuthStatus() {
-    console.log('Checking authentication status...');
+function showLoginForm() {
+    console.log('Showing login form...');
+    // Hide all dashboard sections
+    const adminDashboard = document.getElementById('adminDashboard');
+    const userDashboard = document.getElementById('userDashboard');
+    const loginForm = document.getElementById('loginForm');
 
-    const savedAuth = sessionStorage.getItem('scrumflow_auth');
-    if (savedAuth) {
-        try {
-            const authData = JSON.parse(savedAuth);
-            console.log('Found saved auth:', authData);
+    if (adminDashboard) adminDashboard.style.display = 'none';
+    if (userDashboard) userDashboard.style.display = 'none';
+    if (loginForm) loginForm.style.display = 'block';
 
-            // Set the auth token
-            authToken = authData.token;
+    // Clear any stored auth data
+    sessionStorage.removeItem('scrumflow_auth');
+    authToken = null;
+    currentAdmin = null;
+    currentUser = null;
+    userType = null;
+}
 
-            if (authData.type === 'admin') {
-                currentAdmin = authData.user;
-                userType = 'admin';
-                showAdminDashboard();
-            } else {
-                currentUser = authData.user;
-                userType = 'user';
-                showUserDashboard();
-            }
-        } catch (error) {
-            console.error('Error parsing saved auth:', error);
-            sessionStorage.removeItem('scrumflow_auth');
-            authToken = null;
-        }
-    } else {
-        console.log('No saved authentication found');
+
+function ensureAuthenticated() {
+    if (userType === 'user' && (!currentUser || !currentUser.id)) {
+        console.error('User not properly authenticated');
+        logout();
+        return false;
+    }
+
+    if (userType === 'admin' && (!currentAdmin || !currentAdmin.id)) {
+        console.error('Admin not properly authenticated');
+        logout();
+        return false;
+    }
+
+    return true;
+}
+async function handleTokenRefresh() {
+    try {
+        // Clear the invalid token
+        sessionStorage.removeItem('scrumflow_auth');
+        authToken = null;
+        currentUser = null;
+        currentAdmin = null;
+        userType = null;
+
+        console.log('Invalid token detected, redirecting to login');
+        showLoginForm();
+        showErrorMessage('Your session has expired. Please login again.');
+    } catch (error) {
+        console.error('Error handling token refresh:', error);
+        showLoginForm();
     }
 }
 
-// Add debugging for API calls
 async function apiCall(endpoint, options = {}) {
     const defaultOptions = {
         headers: {
@@ -4163,9 +5074,15 @@ async function apiCall(endpoint, options = {}) {
 
             // Handle authentication errors
             if (response.status === 401) {
+                // Check if it's a JWT signature error
+                if (errorData.message && errorData.message.includes('token')) {
+                    await handleTokenRefresh();
+                    return null;
+                }
+
                 console.log('Authentication failed, redirecting to login');
                 logout();
-                return null; // Return null instead of undefined
+                return null;
             }
 
             throw new Error(errorData.message || `API call failed with status ${response.status}`);
@@ -4179,7 +5096,6 @@ async function apiCall(endpoint, options = {}) {
         throw error;
     }
 }
-
 
 // Job status update functions
 function updateJobStatus(jobId) {
@@ -4415,44 +5331,36 @@ function updateFilterInfo(month, team, status, customer, activeCount, totalCount
 function setupJobFiltersEventListeners() {
     console.log('Setting up job filter event listeners...');
 
-    // Add event listeners for filters with debouncing for customer search
     const monthFilter = document.getElementById('monthFilter');
-    const teamFilter = document.getElementById('teamFilter');
-    const statusFilter = document.getElementById('statusFilter');
-    const customerFilter = document.getElementById('customerFilter');
-
     if (monthFilter) {
-        monthFilter.addEventListener('change', function () {
-            console.log('Month filter changed:', this.value);
-            loadJobEntries();
-        });
+        monthFilter.addEventListener('change', loadJobEntries);
+        console.log('✓ Found element: monthFilter');
+    } else {
+        console.log('monthFilter element not found');
     }
 
+    const teamFilter = document.getElementById('teamFilter');
     if (teamFilter) {
-        teamFilter.addEventListener('change', function () {
-            console.log('Team filter changed:', this.value);
-            loadJobEntries();
-        });
+        teamFilter.addEventListener('change', loadJobEntries);
+        console.log('✓ Found element: teamFilter');
+    } else {
+        console.log('teamFilter element not found');
     }
 
+    const statusFilter = document.getElementById('statusFilter');
     if (statusFilter) {
-        statusFilter.addEventListener('change', function () {
-            console.log('Status filter changed:', this.value);
-            loadJobEntries();
-        });
+        statusFilter.addEventListener('change', loadJobEntries);
+        console.log('✓ Found element: statusFilter');
+    } else {
+        console.log('statusFilter element not found');
     }
 
+    const customerFilter = document.getElementById('customerFilter');
     if (customerFilter) {
-        // Use debounce for customer search to avoid too many API calls
-        let customerTimeout;
-        customerFilter.addEventListener('input', function () {
-            clearTimeout(customerTimeout);
-            const value = this.value;
-            customerTimeout = setTimeout(() => {
-                console.log('Customer filter changed:', value);
-                loadJobEntries();
-            }, 500); // 500ms delay
-        });
+        customerFilter.addEventListener('change', loadJobEntries);
+        console.log('✓ Found element: customerFilter');
+    } else {
+        console.log('customerFilter element not found');
     }
 }
 

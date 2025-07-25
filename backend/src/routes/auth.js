@@ -1,9 +1,11 @@
-// src/routes/auth.js
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 const User = require('../models/User');
 const SuperAdmin = require('../models/SuperAdmin');
+
+// CONSISTENT SECRET
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-12345';
 
 const initializeSuperAdmin = async () => {
     try {
@@ -22,7 +24,6 @@ const initializeSuperAdmin = async () => {
     }
 };
 
-// Initialize on module load
 initializeSuperAdmin();
 
 const router = express.Router();
@@ -34,7 +35,7 @@ const generateToken = (user, userType) => {
             username: user.username,
             userType: userType
         },
-        process.env.JWT_SECRET || 'your-secret-key',
+        JWT_SECRET, // FIXED: Use consistent secret
         { expiresIn: '24h' }
     );
 };
@@ -116,7 +117,9 @@ router.get('/me', async (req, res) => {
         }
 
         const token = authHeader.replace('Bearer ', '');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+
+        // FIXED: Use consistent secret
+        const decoded = jwt.verify(token, JWT_SECRET);
 
         let user;
         if (decoded.userType === 'super_admin') {
@@ -139,6 +142,7 @@ router.get('/me', async (req, res) => {
             role: user.role || decoded.userType
         });
     } catch (error) {
+        console.error('Token verification error:', error);
         res.status(401).json({ message: 'Invalid token' });
     }
 });

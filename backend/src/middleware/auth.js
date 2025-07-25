@@ -3,14 +3,14 @@ const User = require('../models/User');
 const Admin = require('../models/Admin');
 const SuperAdmin = require('../models/SuperAdmin');
 
+// CONSISTENT SECRET
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-12345';
+
 const auth = async (req, res, next) => {
     try {
-        // Skip auth for certain routes or if no token is expected
         const authHeader = req.header('Authorization');
 
         if (!authHeader) {
-            // For backwards compatibility, allow access without token for now
-            // In production, you should require authentication
             console.log('No authorization header found, allowing access');
             return next();
         }
@@ -19,13 +19,13 @@ const auth = async (req, res, next) => {
 
         if (!token) {
             console.log('No token found in authorization header');
-            return next(); // Allow access for now
+            return next();
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-key');
+            // FIXED: Use consistent secret
+            const decoded = jwt.verify(token, JWT_SECRET);
 
-            // Try to find user in all user types
             let user = await User.findById(decoded.id);
             if (user) {
                 user.userType = 'user';
@@ -46,12 +46,16 @@ const auth = async (req, res, next) => {
             }
         } catch (jwtError) {
             console.log('JWT verification failed:', jwtError.message);
+            // OPTIONAL: Clear invalid tokens on client side
+            if (jwtError.message === 'invalid signature') {
+                console.log('Invalid signature detected - token may be from different secret');
+            }
         }
 
         next();
     } catch (error) {
         console.error('Auth middleware error:', error);
-        next(); // Continue without auth for now
+        next();
     }
 };
 

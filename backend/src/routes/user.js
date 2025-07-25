@@ -28,6 +28,77 @@ const upload = multer({
     }
 });
 
+
+async function getUserTaskStats(userId) {
+    try {
+        const UserTask = require('../models/usertask');
+
+        // Execute queries sequentially to avoid overwhelming the database
+        const assignedByMe = await UserTask.countDocuments({ assignedBy: userId });
+        const assignedByMeCompleted = await UserTask.countDocuments({
+            assignedBy: userId,
+            status: 'completed'
+        });
+        const assignedByMePending = await UserTask.countDocuments({
+            assignedBy: userId,
+            status: { $in: ['pending', 'in_progress'] }
+        });
+
+        const assignedToMe = await UserTask.countDocuments({ assignedTo: userId });
+        const assignedToMeCompleted = await UserTask.countDocuments({
+            assignedTo: userId,
+            status: 'completed'
+        });
+        const assignedToMePending = await UserTask.countDocuments({
+            assignedTo: userId,
+            status: { $in: ['pending', 'in_progress'] }
+        });
+
+        const assignedCompletionRate = assignedByMe > 0 ?
+            Math.round((assignedByMeCompleted / assignedByMe) * 100) : 0;
+        const receivedCompletionRate = assignedToMe > 0 ?
+            Math.round((assignedToMeCompleted / assignedToMe) * 100) : 0;
+
+        return {
+            assignedByMe,
+            assignedByMeCompleted,
+            assignedByMePending,
+            assignedCompletionRate,
+            assignedToMe,
+            assignedToMeCompleted,
+            assignedToMePending,
+            receivedCompletionRate
+        };
+    } catch (error) {
+        console.error('Error in getUserTaskStats helper:', error);
+        throw error;
+    }
+}
+
+router.get('/health/database', async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+        const dbState = mongoose.connection.readyState;
+        const states = {
+            0: 'disconnected',
+            1: 'connected',
+            2: 'connecting',
+            3: 'disconnecting'
+        };
+
+        res.json({
+            status: states[dbState] || 'unknown',
+            readyState: dbState,
+            connected: dbState === 1
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            error: error.message
+        });
+    }
+});
+
 // Get team members
 router.get('/team-members', async (req, res) => {
     try {
@@ -406,10 +477,10 @@ router.patch('/tasks/:id/complete', async (req, res) => {
         const dueDate = new Date(task.dueDate);
 
         // FIXED: Proper date comparison - task is on time if completed on or before due date
-        const dueDateEnd = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 23, 59, 59, 999);
-        const completedDateEnd = new Date(completedAt.getFullYear(), completedAt.getMonth(), completedAt.getDate(), 23, 59, 59, 999);
+        const completedEnd = new Date(completedAt.getFullYear(), completedAt.getMonth(), completedAt.getDate(), 23, 59, 59, 999);
+        const dueEnd = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 23, 59, 59, 999);
 
-        const isOnTime = completedDateEnd <= dueDateEnd;
+        const isOnTime = completedEnd <= dueEnd;
 
         let updateData = {
             progress: 100,
@@ -546,12 +617,31 @@ router.delete('/user-tasks/:id', async (req, res) => {
     }
 });
 
-// Get user task statistics
 router.get('/:id/user-task-stats', async (req, res) => {
     try {
         const userId = req.params.id;
 
-        const [assignedByMe, assignedByMeCompleted, assignedByMePending, assignedToMe, assignedToMeCompleted, assignedToMePending] = await Promise.all([
+        // Validate userId format (assuming MongoDB ObjectId)
+        if (!userId || !userId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({
+                message: 'Invalid user ID format',
+                error: 'User ID must be a valid 24-character hex string'
+            });
+        }
+
+        console.log(`Loading user task stats for user ID: ${userId}`);
+
+        // Check if UserTask model exists and is properly imported
+        if (!UserTask) {
+            console.error('UserTask model not found');
+            return res.status(500).json({
+                message: 'Server configuration error',
+                error: 'UserTask model not available'
+            });
+        }
+
+        // Use Promise.allSettled for better error handling
+        const results = await Promise.allSettled([
             UserTask.countDocuments({ assignedBy: userId }),
             UserTask.countDocuments({ assignedBy: userId, status: 'completed' }),
             UserTask.countDocuments({
@@ -566,10 +656,32 @@ router.get('/:id/user-task-stats', async (req, res) => {
             })
         ]);
 
-        const assignedCompletionRate = assignedByMe > 0 ? Math.round((assignedByMeCompleted / assignedByMe) * 100) : 0;
-        const receivedCompletionRate = assignedToMe > 0 ? Math.round((assignedToMeCompleted / assignedToMe) * 100) : 0;
+        // Check if any queries failed
+        const failedQueries = results.filter(result => result.status === 'rejected');
+        if (failedQueries.length > 0) {
+            console.error('Some database queries failed:', failedQueries);
+            // Still proceed with successful queries
+        }
 
-        res.json({
+        // Extract values, defaulting to 0 for failed queries
+        const [
+            assignedByMe,
+            assignedByMeCompleted,
+            assignedByMePending,
+            assignedToMe,
+            assignedToMeCompleted,
+            assignedToMePending
+        ] = results.map(result =>
+            result.status === 'fulfilled' ? result.value : 0
+        );
+
+        // Calculate completion rates safely
+        const assignedCompletionRate = assignedByMe > 0 ?
+            Math.round((assignedByMeCompleted / assignedByMe) * 100) : 0;
+        const receivedCompletionRate = assignedToMe > 0 ?
+            Math.round((assignedToMeCompleted / assignedToMe) * 100) : 0;
+
+        const responseData = {
             assignedByMe,
             assignedByMeCompleted,
             assignedByMePending,
@@ -578,11 +690,76 @@ router.get('/:id/user-task-stats', async (req, res) => {
             assignedToMeCompleted,
             assignedToMePending,
             receivedCompletionRate
-        });
+        };
+
+        console.log(`User task stats loaded successfully for ${userId}:`, responseData);
+        res.json(responseData);
+
     } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
+        console.error('Error in user-task-stats endpoint:', error);
+
+        // Provide more detailed error information
+        res.status(500).json({
+            message: 'Server error loading user task statistics',
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
+
+router.get('/:id/user-task-stats-safe', async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        // Check database connection
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                message: 'Database connection unavailable',
+                error: 'Please try again later'
+            });
+        }
+
+        // Validate user exists first
+        const User = require('../models/User');
+        const userExists = await User.findById(userId);
+        if (!userExists) {
+            return res.status(404).json({
+                message: 'User not found',
+                error: `No user found with ID: ${userId}`
+            });
+        }
+
+        // Default response in case of errors
+        const defaultStats = {
+            assignedByMe: 0,
+            assignedByMeCompleted: 0,
+            assignedByMePending: 0,
+            assignedCompletionRate: 0,
+            assignedToMe: 0,
+            assignedToMeCompleted: 0,
+            assignedToMePending: 0,
+            receivedCompletionRate: 0
+        };
+
+        try {
+            // Try to get actual stats
+            const stats = await getUserTaskStats(userId);
+            res.json(stats);
+        } catch (statsError) {
+            console.error('Error getting user task stats, returning defaults:', statsError);
+            res.json(defaultStats);
+        }
+
+    } catch (error) {
+        console.error('Error in user-task-stats-safe endpoint:', error);
+        res.status(500).json({
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
 
 // Get user task analytics
 router.get('/:id/user-task-analytics', async (req, res) => {
