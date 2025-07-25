@@ -1189,49 +1189,32 @@ async function loadUserDashboardData() {
     }
 }
 
-async function loadUserTaskStats() {
+async function loadUserTasks() {
     try {
         if (!currentUser || !currentUser.id) {
-            console.error('No current user found for loading task stats');
+            console.error('No current user found for loading tasks');
             return;
         }
 
-        console.log('Loading user task stats for user ID:', currentUser.id);
-        const stats = await apiCall(`/user/${currentUser.id}/user-task-stats`);
+        console.log('Loading user tasks for user ID:', currentUser.id);
+        const tasks = await apiCall(`/user/${currentUser.id}/tasks`);
 
-        // Update UI elements if they exist
-        const assignedByMeElement = document.getElementById('assignedByMe');
+        // Store tasks globally for filtering
+        allUserTasks = tasks || [];
+        filteredUserTasks = allUserTasks;
 
+        // Use the grouped rendering instead of table rendering
+        renderUserTasks(filteredUserTasks);
 
-        const assignedToMeElement = document.getElementById('assignedToMe');
-
-
-        const assignedCompletionRateElement = document.getElementById('assignedCompletionRate');
-
-
-        const receivedCompletionRateElement = document.getElementById('receivedCompletionRate');
-
-
-        console.log('User task stats loaded successfully:', stats);
     } catch (error) {
-        console.error('Error loading user task stats:', error);
-        // Don't throw the error, just log it and continue
-        // Set default values if elements exist
-        const defaultElements = [
-            { id: 'assignedByMe', value: '0' },
-            { id: 'assignedToMe', value: '0' },
-            { id: 'assignedCompletionRate', value: '0%' },
-            { id: 'receivedCompletionRate', value: '0%' }
-        ];
-
-        defaultElements.forEach(elem => {
-            const element = document.getElementById(elem.id);
-            if (element) {
-                element.textContent = elem.value;
-            }
-        });
+        console.error('Error loading user tasks:', error);
+        const container = document.getElementById('myTasksContainer');
+        if (container) {
+            container.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 40px;">Error loading tasks. Please refresh the page.</p>';
+        }
     }
 }
+
 
 
 
@@ -2781,6 +2764,11 @@ async function downloadTaskDocumentWithFallback(taskId, filename) {
 function renderUserTasks(tasks) {
     const container = document.getElementById('myTasksContainer');
 
+    if (!container) {
+        console.error('myTasksContainer not found');
+        return;
+    }
+
     if (tasks.length === 0) {
         const statusFilter = document.getElementById('userTaskStatusFilter')?.value || 'pending';
         const filterMessage = getFilterMessage(statusFilter);
@@ -2788,33 +2776,55 @@ function renderUserTasks(tasks) {
         return;
     }
 
-    // Group tasks by parent task or SO number
-    const groupedTasks = groupTasksByTitleWords(tasks);
+    // Hide the table view since we're using grouped cards
+    const tableContainer = document.querySelector('.table-responsive');
+    if (tableContainer) {
+        tableContainer.style.display = 'none';
+    }
+
+    // Group by exact title match
+    const groupedTasks = groupTasksByExactTitle(tasks);
 
     let html = '';
 
-    Object.keys(groupedTasks).forEach(groupName => {
+    // Sort groups alphabetically for consistent display
+    const sortedGroupNames = Object.keys(groupedTasks).sort();
+
+    sortedGroupNames.forEach(groupName => {
         const groupTasks = groupedTasks[groupName];
 
-        html += `
-            <div class="task-group" style="margin-bottom: 30px;">
-                <div class="task-group-header" style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">
-                    <h3 style="margin: 0; color: #667eea; font-size: 1.2rem;">
-                        <i class="fas fa-folder"></i> ${groupName}
-                    </h3>
-                    <small style="color: #888;">${groupTasks.length} task(s)</small>
+        // Only show group header if there are multiple tasks with the same title
+        if (groupTasks.length > 1) {
+            html += `
+                <div class="task-group" style="margin-bottom: 30px;">
+                    <div class="task-group-header" style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">
+                        <h3 style="margin: 0; color: #667eea; font-size: 1.2rem;">
+                            <i class="fas fa-folder"></i> ${groupName}
+                        </h3>
+                        <small style="color: #888;">${groupTasks.length} identical tasks</small>
+                    </div>
+                    <div class="task-group-tasks">
+                        ${groupTasks.map(task => renderSingleUserTask(task)).join('')}
+                    </div>
                 </div>
-                <div class="task-group-tasks">
-                    ${groupTasks.map(task => renderSingleUserTask(task)).join('')}
+            `;
+        } else {
+            // For single tasks, show them without group header
+            html += `
+                <div class="task-group" style="margin-bottom: 20px;">
+                    <div class="task-group-tasks">
+                        ${renderSingleUserTask(groupTasks[0])}
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     });
 
     container.innerHTML = html;
 }
 
-function groupTasksByParent(tasks) {
+
+function groupTasksByExactTitle(tasks) {
     const groups = {};
 
     tasks.forEach(task => {
@@ -2823,35 +2833,10 @@ function groupTasksByParent(tasks) {
         if (task.parentTaskName) {
             groupName = task.parentTaskName;
         } else if (task.title) {
-            // Group by title instead of SO number
+            // Use the exact title as the group name
             groupName = task.title;
         } else {
-            groupName = 'Individual Tasks';
-        }
-
-        if (!groups[groupName]) {
-            groups[groupName] = [];
-        }
-        groups[groupName].push(task);
-    });
-
-    return groups;
-}
-
-function groupTasksByTitleWords(tasks) {
-    const groups = {};
-
-    tasks.forEach(task => {
-        let groupName;
-
-        if (task.parentTaskName) {
-            groupName = task.parentTaskName;
-        } else if (task.title) {
-            // Group by first 3-4 words of title
-            const words = task.title.split(' ');
-            groupName = words.slice(0, 3).join(' ') + (words.length > 3 ? '...' : '');
-        } else {
-            groupName = 'Individual Tasks';
+            groupName = 'Untitled Tasks';
         }
 
         if (!groups[groupName]) {
@@ -2968,17 +2953,15 @@ function renderSingleUserTask(task) {
         </div>
     `;
 }
-// Get filter message for empty state
-function getFilterMessage(filter) {
-    const filterMessages = {
-        'all': 'tasks',
+function getFilterMessage(statusFilter) {
+    const messages = {
         'pending': 'pending tasks',
         'completed': 'completed tasks',
         'in_progress': 'in progress tasks',
-        'pending_approval': 'tasks pending approval',
-        'overdue': 'overdue tasks'
+        'overdue': 'overdue tasks',
+        'all': 'tasks'
     };
-    return filterMessages[filter] || 'tasks';
+    return messages[statusFilter] || 'tasks';
 }
 
 // Update filter info display
