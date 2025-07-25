@@ -2308,6 +2308,137 @@ async function loadUserTasks() {
     }
 }
 
+async function viewTask(taskId) {
+    try {
+        const task = await apiCall(`/admin/tasks/${taskId}`);
+
+        // Check if task description modal exists, if not create it
+        let modal = document.getElementById('taskDescriptionModal');
+        if (!modal) {
+            // Create the modal if it doesn't exist
+            modal = document.createElement('div');
+            modal.id = 'taskDescriptionModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content glass-dark">
+                    <div class="modal-header">
+                        <h3 id="taskDescriptionModalTitle">Task Details</h3>
+                        <button class="close-btn" onclick="closeTaskDescriptionModal()">&times;</button>
+                    </div>
+                    <div id="taskDescriptionContent" style="padding: 20px;">
+                        <!-- Content will be loaded here -->
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        const modalTitle = document.getElementById('taskDescriptionModalTitle');
+        const modalContent = document.getElementById('taskDescriptionContent');
+
+        modalTitle.textContent = `Task: ${task.title}`;
+
+        // Build the task details content
+        modalContent.innerHTML = `
+            <div style="margin-bottom: 15px;">
+                <strong>Title:</strong> ${task.title}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Description:</strong>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 5px; color: #333;">
+                    ${task.description || 'No description provided'}
+                </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Assigned To:</strong> ${task.assignedToName || 'Unassigned'}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Assigned By:</strong> ${task.assignedByName || 'Unknown'}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Priority:</strong> 
+                <span class="priority-badge priority-${task.priority}" style="text-transform: capitalize;">
+                    ${task.priority}
+                </span>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Due Date:</strong> ${new Date(task.dueDate).toLocaleDateString()}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Status:</strong> 
+                <span class="status-badge status-${task.status}" style="text-transform: capitalize;">
+                    ${task.status.replace('_', ' ')}
+                </span>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Progress:</strong> 
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="background: #e0e0e0; border-radius: 10px; height: 8px; overflow: hidden; flex: 1;">
+                        <div style="background: #4caf50; height: 100%; width: ${task.progress || 0}%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <span>${task.progress || 0}%</span>
+                </div>
+            </div>
+            ${task.soNumber ? `
+                <div style="margin-bottom: 15px;">
+                    <strong>SO Number:</strong> ${task.soNumber}
+                </div>
+            ` : ''}
+            ${task.parentTaskName ? `
+                <div style="margin-bottom: 15px;">
+                    <strong>Parent Task:</strong> ${task.parentTaskName}
+                </div>
+            ` : ''}
+            ${task.remarks ? `
+                <div style="margin-bottom: 15px;">
+                    <strong>Remarks:</strong>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 5px; color: #333;">
+                        ${task.remarks}
+                    </div>
+                </div>
+            ` : ''}
+            ${task.attachedDocument ? `
+                <div style="margin-bottom: 15px;">
+                    <strong>Attached Document:</strong>
+                    <div style="margin-top: 5px;">
+                        <button class="btn btn-secondary" onclick="downloadTaskDocument('${task._id}', '${task.attachedDocument.originalName}')" style="padding: 8px 15px; font-size: 14px;">
+                            <i class="fas fa-download"></i> Download ${task.attachedDocument.originalName}
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
+            ${task.status === 'completed' && task.completedAt ? `
+                <div style="margin-top: 15px; padding: 10px; background: #d4edda; border-radius: 8px; text-align: center;">
+                    <i class="fas fa-check-circle" style="color: #155724;"></i>
+                    <span style="color: #155724; font-weight: 500;">
+                        Completed ${task.isOnTime ? 'On Time' : 'Late'}
+                    </span>
+                    <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
+                        ${new Date(task.completedAt).toLocaleString()}
+                    </div>
+                </div>
+            ` : ''}
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                ${task.status !== 'completed' ? `
+                    <button class="btn btn-primary" onclick="editTask('${task._id}'); closeTaskDescriptionModal();" style="padding: 8px 15px;">
+                        <i class="fas fa-edit"></i> Edit Task
+                    </button>
+                ` : ''}
+                <button class="btn btn-secondary" onclick="closeTaskDescriptionModal()" style="padding: 8px 15px;">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        `;
+
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+
+    } catch (error) {
+        console.error('Error loading task details:', error);
+        showErrorMessage('Error loading task details: ' + error.message);
+    }
+}
+
 
 
 function requestTaskDelay(taskId) {
@@ -4179,9 +4310,12 @@ async function viewTaskDescription(taskId) {
     }
 }
 
-// Close task description modal
 function closeTaskDescriptionModal() {
-    document.getElementById('taskDescriptionModal').classList.remove('active');
+    const modal = document.getElementById('taskDescriptionModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
 }
 
 function closeTaskDelayModal() {
