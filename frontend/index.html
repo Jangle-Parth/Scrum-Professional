@@ -507,73 +507,76 @@
     <main class="main-content">
 
         <section id="my-sprints" class="content-section active">
-            <header class="page-header">
-                <h1 class="page-title">My Tasks</h1>
-            </header>
+    <header class="page-header">
+        <h1 class="page-title">My Tasks</h1>
+    </header>
 
-            <!-- MOVE THE FILTER CONTROLS HERE -->
-            <div class="filter-container" style="margin-bottom: 20px;">
-                <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Filter:</label>
-                        <select id="userTaskStatusFilter" class="form-control" style="width: 150px;" onchange="filterUserTasks()">
-                            <option value="pending">Pending Tasks</option>
-                            <option value="all">All Tasks</option>
-                            <option value="completed">Completed Tasks</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="pending_approval">Pending Approval</option>
-                            <option value="overdue">Overdue</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Sort:</label>
-                        <select id="userTaskSortFilter" class="form-control" style="width: 150px;" onchange="filterUserTasks()">
-                            <option value="due_date_asc">Due Date (Earliest)</option>
-                            <option value="due_date_desc">Due Date (Latest)</option>
-                            <option value="created_asc">Created (Oldest)</option>
-                            <option value="created_desc">Created (Newest)</option>
-                            <option value="priority_high">Priority (High First)</option>
-                            <option value="priority_low">Priority (Low First)</option>
-                            <option value="status">Status</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-secondary" onclick="resetUserTaskFilters()" style="padding: 8px 15px;">
-                        <i class="fas fa-refresh"></i> Reset
-                    </button>
-                </div>
+    <!-- Filter Controls -->
+    <div class="filter-container" style="margin-bottom: 20px;">
+        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Filter:</label>
+                <select id="userTaskStatusFilter" class="form-control" style="width: 150px;" onchange="filterUserTasks()">
+                    <option value="pending">Pending Tasks</option>
+                    <option value="all">All Tasks</option>
+                    <option value="completed">Completed Tasks</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="pending_approval">Pending Approval</option>
+                    <option value="overdue">Overdue</option>
+                </select>
             </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Sort:</label>
+                <select id="userTaskSortFilter" class="form-control" style="width: 150px;" onchange="filterUserTasks()">
+                    <option value="due_date_asc">Due Date (Earliest)</option>
+                    <option value="due_date_desc">Due Date (Latest)</option>
+                    <option value="created_asc">Created (Oldest)</option>
+                    <option value="created_desc">Created (Newest)</option>
+                    <option value="priority_high">Priority (High First)</option>
+                    <option value="priority_low">Priority (Low First)</option>
+                    <option value="status">Status</option>
+                </select>
+            </div>
+            <button class="btn btn-secondary" onclick="resetUserTaskFilters()" style="padding: 8px 15px;">
+                <i class="fas fa-refresh"></i> Reset
+            </button>
+        </div>
+    </div>
 
-            <div class="table-responsive">
-                <table id="userTasksTable" class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Task Title</th>
-                            <th>Status</th>
-                            <th>Priority</th>
-                            <th>Due Date</th>
-                            <th>Assigned By</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Tasks will be populated here -->
-                    </tbody>
-                </table>
-            </div>
-            <div style="margin-bottom: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                <button class="btn btn-sm btn-outline-primary" onclick="expandAllGroups()">
-                    <i class="fas fa-expand-arrows-alt"></i> Expand All
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllGroups()">
-                    <i class="fas fa-compress-arrows-alt"></i> Collapse All
-                </button>
-            </div>
+    <!-- Hide the old table -->
+    <div class="table-responsive" style="display: none;">
+        <table id="userTasksTable" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Task Title</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Due Date</th>
+                    <th>Assigned By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Tasks will be populated here -->
+            </tbody>
+        </table>
+    </div>
 
-            <!-- Task content container -->
-            <div id="myTasksContainer">
-                <p style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading tasks...</p>
-            </div>
-        </section>
+    <!-- Expand/Collapse Controls -->
+    <div style="margin-bottom: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn btn-sm btn-outline-primary" onclick="expandAllGroups()">
+            <i class="fas fa-expand-arrows-alt"></i> Expand All
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllGroups()">
+            <i class="fas fa-compress-arrows-alt"></i> Collapse All
+        </button>
+    </div>
+
+    <!-- Grouped Task Content Container -->
+    <div id="myTasksContainer">
+        <p style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading tasks...</p>
+    </div>
+</section>
         <!-- My Progress Section -->
         <section id="my-progress" class="content-section">
             <header class="page-header">

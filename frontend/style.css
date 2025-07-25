@@ -160,6 +160,213 @@
     color: white;
 }
 
+/* Task Group Styles */
+.task-group-content {
+    transition: max-height 0.4s ease, padding 0.4s ease;
+    overflow: hidden;
+}
+
+.task-group-header {
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.task-group-header:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6b5b95) !important;
+}
+
+/* Individual task styles within groups */
+.task-item {
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.3s ease;
+}
+
+.task-item:hover {
+    background-color: #f8f9fa !important;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.priority-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.priority-low {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.priority-medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.priority-high {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.priority-critical {
+    background: #d1ecf1;
+    color: #0c5460;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+}
+
+/* Button styles for task actions */
+.task-action-btn {
+    background: #6c5ce7;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    min-width: 120px;
+    transition: all 0.3s ease;
+}
+
+.task-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+}
+
+.task-action-btn.success {
+    background: #00b894;
+}
+
+.task-action-btn.success:hover {
+    box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
+}
+
+.task-action-btn.warning {
+    background: #fdcb6e;
+    color: #2d3436;
+}
+
+.task-action-btn.warning:hover {
+    box-shadow: 0 4px 12px rgba(253, 203, 110, 0.3);
+}
+
+.task-action-btn.info {
+    background: #74b9ff;
+}
+
+.task-action-btn.info:hover {
+    box-shadow: 0 4px 12px rgba(116, 185, 255, 0.3);
+}
+
+/* Overdue task styling */
+.task-overdue {
+    background: #fff5f5 !important;
+    border-left: 3px solid #dc3545 !important;
+}
+
+.task-due-today {
+    background: #fffbf0 !important;
+    border-left: 3px solid #ffc107 !important;
+}
+
+.task-completed {
+    background: #f0f9ff !important;
+    border-left: 3px solid #28a745 !important;
+}
+
+/* Progress bar styling */
+.progress-bar {
+    background: #e0e0e0;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+/* Group statistics styling */
+.group-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.group-stats span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Expand/Collapse controls */
+.expand-collapse-controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.expand-collapse-controls .btn {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .task-item {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+
+    .task-item>div:last-child {
+        margin-left: 0 !important;
+        margin-top: 15px;
+        width: 100%;
+    }
+
+    .task-action-btn {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+
+    .group-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
 body {
     font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
