@@ -13,26 +13,57 @@ class JobService {
         return JOB_STATUS_MAP[status] || status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
-    // FIXED: Improved stage progression with better validation
     async moveJobToNextStage(jobEntry, adminId) {
         try {
-            console.log(`Moving job ${jobEntry.soNumber} from ${jobEntry.status} to next stage`);
+            console.log(`=== STAGE PROGRESSION START ===`);
+            console.log(`Job ${jobEntry.soNumber}: Current stage: ${jobEntry.status}`);
 
-            const currentIndex = STAGE_ORDER.indexOf(jobEntry.status);
+            // Get fresh job entry to prevent stale data issues
+            const freshJobEntry = await JobEntry.findById(jobEntry._id);
+            if (!freshJobEntry) {
+                console.error(`Job entry ${jobEntry.soNumber} not found in database`);
+                return;
+            }
+
+            const currentStatus = freshJobEntry.status;
+            console.log(`Fresh job status: ${currentStatus}`);
+
+            // CRITICAL: Validate current stage exists in STAGE_ORDER
+            const currentIndex = STAGE_ORDER.indexOf(currentStatus);
             if (currentIndex === -1) {
-                console.error(`Current status ${jobEntry.status} not found in STAGE_ORDER`);
+                console.error(`CRITICAL ERROR: Current status "${currentStatus}" not found in STAGE_ORDER`);
+                console.error(`Available stages:`, STAGE_ORDER);
                 return;
             }
 
+            // Check if already at final stage
             if (currentIndex === STAGE_ORDER.length - 1) {
-                console.log(`Job ${jobEntry.soNumber} is already at final stage: ${jobEntry.status}`);
+                console.log(`Job ${jobEntry.soNumber} is already at final stage: ${currentStatus}`);
                 return;
             }
 
-            const nextStage = STAGE_ORDER[currentIndex + 1];
-            const nextDepartment = DEPARTMENT_MAP[nextStage];
+            // CRITICAL: Calculate next stage strictly based on current index
+            const nextStageIndex = currentIndex + 1;
+            const nextStage = STAGE_ORDER[nextStageIndex];
 
-            console.log(`Next stage: ${nextStage}, Department: ${nextDepartment}`);
+            console.log(`Next stage calculation:`);
+            console.log(`- Current index: ${currentIndex} (${currentStatus})`);
+            console.log(`- Next index: ${nextStageIndex} (${nextStage})`);
+
+            if (!nextStage) {
+                console.error(`CRITICAL ERROR: No next stage found for index ${nextStageIndex}`);
+                return;
+            }
+
+            // Double-check the progression is valid
+            if (nextStageIndex !== currentIndex + 1) {
+                console.error(`CRITICAL ERROR: Invalid stage progression calculation`);
+                console.error(`Current: ${currentIndex}, Next: ${nextStageIndex}, Expected: ${currentIndex + 1}`);
+                return;
+            }
+
+            const nextDepartment = DEPARTMENT_MAP[nextStage];
+            console.log(`Next department: ${nextDepartment}`);
 
             // Get stage assignment for next stage
             const nextStageAssignment = await StageAssignment.findOne({
@@ -41,38 +72,49 @@ class JobService {
                 adminId: adminId
             });
 
-            // Update previous stage completion
-            const stageHistory = [...jobEntry.stageHistory];
-            if (stageHistory.length > 0) {
-                const lastStage = stageHistory[stageHistory.length - 1];
-                if (!lastStage.completedAt) {
-                    lastStage.completedAt = new Date();
-                }
-            }
-
-            // Add new stage to history
-            stageHistory.push({
-                stage: nextStage,
-                timestamp: new Date(),
-                changedBy: 'System Auto-Progression',
-                department: nextDepartment,
-                remarks: `Auto-progressed from ${this.formatJobStatus(jobEntry.status)}`
-            });
-
-            // Update job entry with explicit field updates to prevent random stage jumps
+            // CRITICAL: Build update data with explicit validation
             const updateData = {
                 status: nextStage,
                 currentDepartment: nextDepartment,
                 assignedUsername: nextStageAssignment ? nextStageAssignment.assignedUsername : '',
-                stageHistory: stageHistory,
                 updatedAt: new Date()
             };
 
-            // Use findOneAndUpdate with proper conditions to prevent race conditions
+            // CRITICAL: Update stage history properly
+            const stageHistory = [...freshJobEntry.stageHistory];
+
+            // Mark previous stage as completed
+            if (stageHistory.length > 0) {
+                const lastStage = stageHistory[stageHistory.length - 1];
+                if (!lastStage.completedAt) {
+                    lastStage.completedAt = new Date();
+                    console.log(`Marking previous stage as completed: ${lastStage.stage}`);
+                }
+            }
+
+            // Add new stage to history
+            const newStageEntry = {
+                stage: nextStage,
+                timestamp: new Date(),
+                changedBy: 'System Auto-Progression',
+                department: nextDepartment,
+                remarks: `Auto-progressed from ${this.formatJobStatus(currentStatus)}`
+            };
+
+            stageHistory.push(newStageEntry);
+            updateData.stageHistory = stageHistory;
+
+            console.log(`Updating job with data:`, {
+                fromStatus: currentStatus,
+                toStatus: nextStage,
+                department: nextDepartment
+            });
+
+            // CRITICAL: Use atomic update with proper conditions to prevent race conditions
             const updatedJobEntry = await JobEntry.findOneAndUpdate(
                 {
-                    _id: jobEntry._id,
-                    status: jobEntry.status // Ensure status hasn't changed since we started
+                    _id: freshJobEntry._id,
+                    status: currentStatus // Ensure status hasn't changed since we started
                 },
                 updateData,
                 {
@@ -82,11 +124,18 @@ class JobService {
             );
 
             if (!updatedJobEntry) {
-                console.error(`Failed to update job ${jobEntry.soNumber} - possibly updated by another process`);
+                console.error(`CRITICAL ERROR: Failed to update job ${jobEntry.soNumber}`);
+                console.error(`Possible causes: Job was updated by another process, or invalid data`);
                 return;
             }
 
-            console.log(`Successfully updated job ${jobEntry.soNumber} to stage ${nextStage}`);
+            // Verify the update was successful
+            if (updatedJobEntry.status !== nextStage) {
+                console.error(`CRITICAL ERROR: Job update failed. Expected: ${nextStage}, Got: ${updatedJobEntry.status}`);
+                return;
+            }
+
+            console.log(`✅ Successfully updated job ${jobEntry.soNumber} to stage ${nextStage}`);
 
             // Handle dispatched stage
             if (nextStage === 'dispatched') {
@@ -103,30 +152,65 @@ class JobService {
                 'auto_progress',
                 'job_entry',
                 jobEntry._id,
-                `Auto-progressed job ${jobEntry.soNumber} from ${this.formatJobStatus(jobEntry.status)} to ${this.formatJobStatus(nextStage)} - assigned to ${nextDepartment} department`
+                `Auto-progressed job ${jobEntry.soNumber} from ${this.formatJobStatus(currentStatus)} to ${this.formatJobStatus(nextStage)}`
             );
 
+            console.log(`=== STAGE PROGRESSION SUCCESS ===`);
+
         } catch (error) {
-            console.error('Error moving job to next stage:', error);
+            console.error(`=== STAGE PROGRESSION FAILED ===`);
+            console.error('Critical error in moveJobToNextStage:', error);
+            console.error('Stack trace:', error.stack);
+
             // Log the error but don't throw to prevent cascading failures
+            await activityService.logActivity(
+                adminId,
+                'error',
+                'job_entry',
+                jobEntry._id,
+                `CRITICAL ERROR: Failed to progress job ${jobEntry.soNumber}: ${error.message}`
+            );
         }
     }
 
-    // FIXED: Better task creation with proper SO number handling
     async createAndNotifyStageTask(jobEntry, currentStage, stageAssignment) {
         try {
-            const user = await User.findOne({
+            console.log(`Creating task for job ${jobEntry.soNumber} at stage ${currentStage}`);
+
+            // CRITICAL FIX: Validate user exists and username is not corrupted
+            let user = await User.findOne({
                 username: stageAssignment.assignedUsername,
                 adminId: jobEntry.adminId,
                 status: 'active'
             });
 
-            if (!user) {
-                console.log(`Warning: User ${stageAssignment.assignedUsername} not found or inactive for stage ${currentStage}`);
-                return;
+            // Additional validation for username corruption
+            if (!user || !stageAssignment.assignedUsername || stageAssignment.assignedUsername === 'jpg') {
+                console.error(`CRITICAL ERROR: Invalid user assignment detected`);
+                console.error(`Stage: ${currentStage}, Username: ${stageAssignment.assignedUsername}`);
+
+                // Try to find any active user for this stage as fallback
+                const fallbackUsers = await User.find({
+                    adminId: jobEntry.adminId,
+                    status: 'active',
+                    role: DEPARTMENT_MAP[currentStage]
+                }).limit(1);
+
+                if (fallbackUsers.length > 0) {
+                    user = fallbackUsers[0];
+                    console.log(`Using fallback user: ${user.username} for stage ${currentStage}`);
+
+                    // Update the stage assignment to prevent future issues
+                    await StageAssignment.findByIdAndUpdate(stageAssignment._id, {
+                        assignedUsername: user.username
+                    });
+                } else {
+                    console.error(`No valid users found for stage ${currentStage}`);
+                    return;
+                }
             }
 
-            // Create parent task for this SO number if it doesn't exist
+            // Create or find parent task
             let parentTask = await Task.findOne({
                 soNumber: jobEntry.soNumber,
                 parentTask: null,
@@ -150,7 +234,7 @@ class JobService {
                 console.log(`Created parent task for SO# ${jobEntry.soNumber}`);
             }
 
-            // Check if task already exists for this stage and SO
+            // Check for existing tasks
             const existingTask = await Task.findOne({
                 soNumber: jobEntry.soNumber,
                 stage: currentStage,
@@ -163,6 +247,7 @@ class JobService {
                 return;
             }
 
+            // Create new task with proper validation
             const taskData = {
                 title: `${stageAssignment.taskTitle} - ${jobEntry.soNumber}`,
                 description: `${stageAssignment.taskDescription || ''}\n\nJob Details:\nSO#: ${jobEntry.soNumber}\nCustomer: ${jobEntry.customer}\nItem: ${jobEntry.itemCode}\nParticulars: ${jobEntry.particularsAndModels}\nQuantity: ${jobEntry.qty}\n\nStage: ${this.formatJobStatus(currentStage)}`,
@@ -181,10 +266,7 @@ class JobService {
             const task = new Task(taskData);
             await task.save();
 
-            console.log(`Created task for SO# ${jobEntry.soNumber} stage ${currentStage} assigned to ${user.name}`);
-
-            // Send email notification
-            await this.sendJobStageTaskEmail(user, jobEntry, currentStage, task);
+            console.log(`✅ Created task for SO# ${jobEntry.soNumber} stage ${currentStage} assigned to ${user.name}`);
 
             await activityService.logActivity(
                 jobEntry.adminId,
@@ -193,27 +275,33 @@ class JobService {
                 task._id,
                 `Auto-created task for job ${jobEntry.soNumber} stage ${currentStage} - assigned to ${user.name}`
             );
+
         } catch (error) {
-            console.error('Error creating and notifying stage task:', error);
+            console.error('Error creating stage task:', error);
         }
     }
 
-    // FIXED: Improved status update with better validation
     async updateJobStatus(jobId, { status, changedBy, remarks, holdReason, cancelReason, restartReason }) {
         try {
+            console.log(`=== JOB STATUS UPDATE START ===`);
+            console.log(`Job ID: ${jobId}, New Status: ${status}`);
+
             const jobEntry = await JobEntry.findById(jobId);
             if (!jobEntry) {
                 throw new Error('Job entry not found');
             }
 
-            console.log(`Updating job ${jobEntry.soNumber} from ${jobEntry.status} to ${status}`);
+            const currentStatus = jobEntry.status;
+            console.log(`Current status: ${currentStatus}, Requested status: ${status}`);
 
-            // Validate status transition
-            if (!this.isValidStatusTransition(jobEntry.status, status)) {
-                throw new Error(`Invalid status transition from ${jobEntry.status} to ${status}`);
+            // CRITICAL: Enhanced validation to prevent invalid transitions
+            if (!this.isValidStatusTransition(currentStatus, status)) {
+                const errorMsg = `Invalid status transition from "${currentStatus}" to "${status}"`;
+                console.error(`CRITICAL ERROR: ${errorMsg}`);
+                throw new Error(errorMsg);
             }
 
-            // Handle different status updates with proper stage order validation
+            // Handle special status updates
             if (status === 'hold') {
                 return await this.handleJobHold(jobEntry, holdReason || remarks, changedBy);
             }
@@ -222,42 +310,66 @@ class JobService {
                 return await this.handleJobCancellation(jobEntry, cancelReason || remarks, changedBy);
             }
 
-            // Handle restart from hold
-            if (jobEntry.status === 'hold' && status !== 'hold' && status !== 'so_cancelled') {
+            // Handle restart from hold with strict validation
+            if (currentStatus === 'hold' && status !== 'hold' && status !== 'so_cancelled') {
                 return await this.handleJobRestart(jobEntry, status, restartReason || remarks, changedBy);
             }
 
-            // Normal status update - validate stage order
+            // CRITICAL: Normal status update with stage order validation
             return await this.handleNormalStatusUpdate(jobEntry, status, remarks, changedBy);
 
         } catch (error) {
+            console.error('=== JOB STATUS UPDATE FAILED ===');
             console.error('Error updating job status:', error);
             throw error;
         }
     }
 
-    // Validate status transitions to prevent random stage jumps
+    // CRITICAL: Enhanced validation to prevent stage skipping
     isValidStatusTransition(currentStatus, newStatus) {
+        console.log(`Validating transition: ${currentStatus} -> ${newStatus}`);
+
         // Allow any transition to hold or cancel
         if (newStatus === 'hold' || newStatus === 'so_cancelled') {
+            console.log(`✅ Valid transition: Special status (${newStatus})`);
             return true;
         }
 
-        // Allow restart from hold to any stage
+        // Allow restart from hold to any valid stage
         if (currentStatus === 'hold') {
-            return STAGE_ORDER.includes(newStatus);
+            const isValidStage = STAGE_ORDER.includes(newStatus);
+            console.log(`${isValidStage ? '✅' : '❌'} Hold restart to: ${newStatus}`);
+            return isValidStage;
         }
 
-        // For normal progression, only allow next stage or same stage
+        // CRITICAL: For normal progression, only allow same stage or next stage
         const currentIndex = STAGE_ORDER.indexOf(currentStatus);
         const newIndex = STAGE_ORDER.indexOf(newStatus);
 
-        if (currentIndex === -1 || newIndex === -1) {
-            return false; // Invalid stages
+        if (currentIndex === -1) {
+            console.log(`❌ Invalid current status: ${currentStatus}`);
+            return false;
         }
 
-        // Allow same stage or next stage only
-        return newIndex >= currentIndex && newIndex <= currentIndex + 1;
+        if (newIndex === -1) {
+            console.log(`❌ Invalid new status: ${newStatus}`);
+            return false;
+        }
+
+        // Allow same stage or next stage only (no skipping)
+        const isValid = newIndex >= currentIndex && newIndex <= currentIndex + 1;
+
+        console.log(`Stage validation:`);
+        console.log(`- Current index: ${currentIndex} (${currentStatus})`);
+        console.log(`- New index: ${newIndex} (${newStatus})`);
+        console.log(`- Difference: ${newIndex - currentIndex}`);
+        console.log(`- Valid: ${isValid ? '✅' : '❌'}`);
+
+        if (!isValid) {
+            console.log(`❌ BLOCKED: Attempted to skip ${newIndex - currentIndex - 1} stage(s)`);
+        }
+
+        return isValid;
     }
 
     async handleJobHold(jobEntry, reason, changedBy) {
@@ -430,59 +542,66 @@ class JobService {
     }
 
     async handleNormalStatusUpdate(jobEntry, newStatus, remarks, changedBy) {
-        const stageAssignment = await StageAssignment.findOne({
-            stage: newStatus,
-            isActive: true,
-            adminId: jobEntry.adminId
-        });
+        try {
+            console.log(`Handling normal status update for ${jobEntry.soNumber}: ${jobEntry.status} -> ${newStatus}`);
 
-        const updateData = {
-            status: newStatus,
-            assignedUsername: stageAssignment ? stageAssignment.assignedUsername : '',
-            currentDepartment: DEPARTMENT_MAP[newStatus] || 'Unknown',
-            updatedAt: new Date()
-        };
+            const stageAssignment = await StageAssignment.findOne({
+                stage: newStatus,
+                isActive: true,
+                adminId: jobEntry.adminId
+            });
 
-        // Update stage history
-        const stageHistory = [...jobEntry.stageHistory];
-        if (stageHistory.length > 0) {
-            const lastStage = stageHistory[stageHistory.length - 1];
-            if (!lastStage.completedAt) {
-                lastStage.completedAt = new Date();
+            const updateData = {
+                status: newStatus,
+                assignedUsername: stageAssignment ? stageAssignment.assignedUsername : '',
+                currentDepartment: DEPARTMENT_MAP[newStatus] || 'Unknown',
+                updatedAt: new Date()
+            };
+
+            // Update stage history
+            const stageHistory = [...jobEntry.stageHistory];
+            if (stageHistory.length > 0) {
+                const lastStage = stageHistory[stageHistory.length - 1];
+                if (!lastStage.completedAt) {
+                    lastStage.completedAt = new Date();
+                }
             }
+
+            stageHistory.push({
+                stage: newStatus,
+                timestamp: new Date(),
+                changedBy: changedBy || 'Admin',
+                remarks: remarks,
+                department: DEPARTMENT_MAP[newStatus] || 'Unknown'
+            });
+
+            updateData.stageHistory = stageHistory;
+
+            const updatedEntry = await JobEntry.findByIdAndUpdate(
+                jobEntry._id,
+                updateData,
+                { new: true, runValidators: true }
+            );
+
+            // Handle dispatched status
+            if (newStatus === 'dispatched') {
+                await this.createDispatchedJobAnalysis(updatedEntry);
+            }
+
+            // Create task for new stage
+            if (stageAssignment) {
+                await this.createAndNotifyStageTask(updatedEntry, newStatus, stageAssignment);
+            }
+
+            return {
+                success: true,
+                entry: updatedEntry,
+                message: 'Job status updated successfully'
+            };
+        } catch (error) {
+            console.error('Error in handleNormalStatusUpdate:', error);
+            throw error;
         }
-
-        stageHistory.push({
-            stage: newStatus,
-            timestamp: new Date(),
-            changedBy: changedBy || 'Admin',
-            remarks: remarks,
-            department: DEPARTMENT_MAP[newStatus] || 'Unknown'
-        });
-
-        updateData.stageHistory = stageHistory;
-
-        const updatedEntry = await JobEntry.findByIdAndUpdate(
-            jobEntry._id,
-            updateData,
-            { new: true, runValidators: true }
-        );
-
-        // Handle dispatched status
-        if (newStatus === 'dispatched') {
-            await this.createDispatchedJobAnalysis(updatedEntry);
-        }
-
-        // Create task for new stage
-        if (stageAssignment) {
-            await this.createAndNotifyStageTask(updatedEntry, newStatus, stageAssignment);
-        }
-
-        return {
-            success: true,
-            entry: updatedEntry,
-            message: 'Job status updated successfully'
-        };
     }
 
     // Rest of the methods remain the same...

@@ -72,6 +72,232 @@ class EmailService {
         }
     }
 
+    async sendMiddleLevelValidationRequest(validator, assignee, task) {
+        const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">⚡ Middle Level Validation Required</h1>
+            </div>
+            <div style="padding: 30px;">
+                <h2>Hello ${validator.name}!</h2>
+                <p><strong>${assignee.name}</strong> has completed a task that requires your validation before admin approval:</p>
+                
+                <div style="border: 2px solid #ffc107; border-radius: 12px; padding: 25px; margin: 25px 0;">
+                    <h3 style="color: #856404;">📋 ${task.title}</h3>
+                    <div><strong>📝 Description:</strong> ${task.description || 'No description provided'}</div>
+                    <div><strong>👤 Completed by:</strong> ${assignee.name}</div>
+                    <div><strong>📅 Due Date:</strong> ${new Date(task.dueDate).toLocaleDateString()}</div>
+                    <div><strong>🚨 Priority:</strong> ${task.priority.toUpperCase()}</div>
+                    <div><strong>📊 Progress:</strong> ${task.progress || 0}%</div>
+                    <div><strong>⏰ Completion Date:</strong> ${new Date(task.completedAt).toLocaleString()}</div>
+                </div>
+
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="color: #856404; margin: 0 0 10px 0;">🎯 Your Action Required:</h4>
+                    <p style="margin: 0; color: #856404;">
+                        Please review the task completion and either <strong>approve</strong> or <strong>reject</strong> it. 
+                        If approved, it will go to admin for final approval. If rejected, it will be sent back to ${assignee.name}.
+                    </p>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                       style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); 
+                              color: white; padding: 15px 30px; border-radius: 25px; 
+                              text-decoration: none; font-weight: bold; display: inline-block;">
+                        🔍 Review & Validate Task
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
+
+        try {
+            await this.sendEmail(
+                validator.email,
+                `⚡ Middle Level Validation Required: ${task.title}`,
+                htmlContent
+            );
+            console.log(`Middle level validation email sent to ${validator.email}`);
+        } catch (error) {
+            console.error('Failed to send middle level validation email:', error);
+        }
+    }
+
+    // Enhanced task assignment email with document attachment info
+    async sendUserTaskAssignmentEmail(assignedUser, assigningUser, userTask) {
+        const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">📋 New Task Assignment</h1>
+            </div>
+            <div style="padding: 30px;">
+                <h2 style="color: #2c3e50;">Hello ${assignedUser.name}!</h2>
+                <p style="font-size: 16px; color: #555;">
+                    <strong>${assigningUser.name}</strong> has assigned you a new task:
+                </p>
+                
+                <div style="border: 2px solid #4facfe; border-radius: 12px; padding: 25px; margin: 25px 0; background: #f0f8ff;">
+                    <h3 style="color: #4facfe;">📋 ${userTask.title}</h3>
+                    
+                    <div><strong>📝 Description:</strong> ${userTask.description || 'No description provided'}</div>
+                    <div><strong>📅 Due Date:</strong> ${new Date(userTask.dueDate).toLocaleDateString()}</div>
+                    <div><strong>🚨 Priority:</strong> ${userTask.priority.toUpperCase()}</div>
+                    <div><strong>⏰ Assigned Date:</strong> ${new Date().toLocaleString()}</div>
+                    
+                    ${userTask.attachedDocument ? `
+                        <div style="background: #e8f5e8; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                            <strong>📎 Document Attached:</strong> ${userTask.attachedDocument.originalName}
+                            <br><small>Size: ${Math.round(userTask.attachedDocument.size / 1024)} KB</small>
+                        </div>
+                    ` : ''}
+                    
+                    ${userTask.notes ? `
+                        <div style="background: #fff3cd; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                            <strong>📝 Additional Notes:</strong> ${userTask.notes}
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                       style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+                              color: white; padding: 15px 30px; border-radius: 25px; 
+                              text-decoration: none; font-weight: bold; display: inline-block;">
+                        📊 Open Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px;">
+                <p>Task assigned by ${assigningUser.name} on ${new Date().toLocaleString()}</p>
+                <p>ScrumFlow - Team Collaboration Platform 🚀</p>
+            </div>
+        </div>
+    `;
+
+        try {
+            await this.sendEmail(
+                assignedUser.email,
+                `📋 New Task from ${assigningUser.name}: ${userTask.title}`,
+                htmlContent
+            );
+            console.log(`Task assignment email sent to ${assignedUser.email}`);
+        } catch (error) {
+            console.error('Failed to send task assignment email:', error);
+        }
+    }
+
+    // Enhanced delay request notification email
+    async sendDelayRequestEmail(adminUser, employee, task, delayRequest) {
+        const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #ff9500 0%, #ff5722 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">⏰ Task Delay Request</h1>
+            </div>
+            <div style="padding: 30px;">
+                <h2>Hello Admin!</h2>
+                <p><strong>${employee.name}</strong> has requested a delay for the following task:</p>
+                
+                <div style="border: 2px solid #ff9500; border-radius: 12px; padding: 25px; margin: 25px 0;">
+                    <h3 style="color: #e65100;">📋 ${task.title}</h3>
+                    <div><strong>📝 Description:</strong> ${task.description || 'No description provided'}</div>
+                    <div><strong>👤 Assigned to:</strong> ${employee.name}</div>
+                    <div><strong>📅 Current Due Date:</strong> ${new Date(delayRequest.currentDueDate).toLocaleDateString()}</div>
+                    <div><strong>📅 Requested Due Date:</strong> ${new Date(delayRequest.requestedDueDate).toLocaleDateString()}</div>
+                    <div><strong>📊 Current Progress:</strong> ${task.progress || 0}%</div>
+                    <div><strong>⏰ Request Date:</strong> ${new Date(delayRequest.requestDate).toLocaleString()}</div>
+                    
+                    <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <strong>💬 Reason for Delay:</strong>
+                        <p style="margin: 5px 0 0 0;">${delayRequest.reason}</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                       style="background: linear-gradient(135deg, #ff9500 0%, #ff5722 100%); 
+                              color: white; padding: 15px 30px; border-radius: 25px; 
+                              text-decoration: none; font-weight: bold; display: inline-block;">
+                        🏛️ Review Delay Request
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
+
+        try {
+            await this.sendEmail(
+                adminUser.email,
+                `⏰ Task Delay Request: ${task.title}`,
+                htmlContent
+            );
+            console.log(`Delay request email sent to admin: ${adminUser.email}`);
+        } catch (error) {
+            console.error('Failed to send delay request email:', error);
+        }
+    }
+
+    // Enhanced completion request email with middle level validation info
+    async sendCompletionRequestEmail(adminUser, employee, task) {
+        const validationInfo = task.needsMiddleLevelValidation ?
+            `<div style="background: #d1edff; padding: 10px; border-radius: 6px; margin: 10px 0;">
+            <strong>✅ Middle Level Validation:</strong> Approved by ${task.middleLevelValidatedBy}
+            ${task.middleLevelRemarks ? `<br><strong>Validator Notes:</strong> ${task.middleLevelRemarks}` : ''}
+        </div>` : '';
+
+        const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">⏳ Task Completion Request</h1>
+            </div>
+            <div style="padding: 30px;">
+                <h2>Hello Admin!</h2>
+                <p><strong>${employee.name}</strong> has requested approval to mark the following task as completed:</p>
+                
+                <div style="border: 2px solid #ffc107; border-radius: 12px; padding: 25px; margin: 25px 0;">
+                    <h3 style="color: #856404;">📋 ${task.title}</h3>
+                    <div><strong>📝 Description:</strong> ${task.description || 'No description provided'}</div>
+                    <div><strong>👤 Assigned to:</strong> ${employee.name}</div>
+                    <div><strong>📅 Due Date:</strong> ${new Date(task.dueDate).toLocaleDateString()}</div>
+                    <div><strong>🚨 Priority:</strong> ${task.priority.toUpperCase()}</div>
+                    <div><strong>📊 Progress:</strong> ${task.progress || 0}%</div>
+                    <div><strong>⏰ Request Date:</strong> ${new Date().toLocaleString()}</div>
+                    ${task.remarks ? `<div><strong>💬 Remarks:</strong> ${task.remarks}</div>` : ''}
+                    
+                    ${validationInfo}
+                    
+                    ${task.attachedDocument ? `
+                        <div style="background: #e8f5e8; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                            <strong>📎 Document:</strong> ${task.attachedDocument.originalName}
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                              color: white; padding: 15px 30px; border-radius: 25px; 
+                              text-decoration: none; font-weight: bold; display: inline-block;">
+                        🏛️ Open Admin Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
+
+        try {
+            await this.sendEmail(
+                adminUser.email,
+                `⏳ Task Completion Request: ${task.title}`,
+                htmlContent
+            );
+            console.log(`Completion request email sent to admin: ${adminUser.email}`);
+        } catch (error) {
+            console.error(`Failed to send completion request email:`, error);
+        }
+    }
+
 
     async sendCompletionRequestEmail(adminUser, employee, task) {
         const htmlContent = `

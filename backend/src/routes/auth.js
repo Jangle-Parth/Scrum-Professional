@@ -44,9 +44,13 @@ router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
 
+        console.log(`Login attempt: ${username}`);
+
+        // Check super admin first
         const superAdmin = await SuperAdmin.findOne({ username });
         if (superAdmin && superAdmin.password === password) {
             const token = generateToken(superAdmin, 'super_admin');
+            console.log(`✅ Super Admin login successful: ${username}`);
             return res.json({
                 success: true,
                 token: token,
@@ -60,10 +64,11 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check if admin login
+        // Check admin
         const admin = await Admin.findOne({ username });
         if (admin && admin.password === password) {
             const token = generateToken(admin, 'admin');
+            console.log(`✅ Admin login successful: ${username}`);
             return res.json({
                 success: true,
                 token: token,
@@ -77,10 +82,11 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Check if user login
+        // Check regular user
         const user = await User.findOne({ username, status: 'active' });
         if (user && user.password === password) {
             const token = generateToken(user, 'user');
+            console.log(`✅ User login successful: ${username}`);
             return res.json({
                 success: true,
                 token: token,
@@ -94,9 +100,46 @@ router.post('/login', async (req, res) => {
             });
         }
 
+        console.log(`❌ Login failed for: ${username}`);
         res.status(400).json({ message: 'Invalid credentials' });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+router.get('/me', async (req, res) => {
+    try {
+        const authHeader = req.header('Authorization');
+        if (!authHeader) {
+            return res.status(401).json({ message: 'No token provided' });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+
+        let user;
+        if (decoded.userType === 'super_admin') {
+            user = await SuperAdmin.findById(decoded.id);
+        } else if (decoded.userType === 'admin') {
+            user = await Admin.findById(decoded.id);
+        } else {
+            user = await User.findById(decoded.id);
+        }
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            name: user.name,
+            role: user.role || decoded.userType
+        });
+    } catch (error) {
+        res.status(401).json({ message: 'Invalid token' });
     }
 });
 

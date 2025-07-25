@@ -5,7 +5,7 @@ const Admin = require('../models/Admin');
 const SuperAdmin = require('../models/SuperAdmin');
 const User = require('../models/User');
 const Task = require('../models/Task');
-const UserTask = require('../models/UserTask');
+const UserTask = require('../models/usertask');
 const DispatchedJob = require('../models/DispatchedJob');
 const StageAssignment = require('../models/StageAssignment');
 const CustomField = require('../models/CustomField');
@@ -193,8 +193,11 @@ router.post('/tasks', upload.single('document'), async (req, res) => {
 
         // Handle middle level validation
         if (req.body.middleLevelValidator) {
+            const validator = await User.findById(req.body.middleLevelValidator);
             taskData.needsMiddleLevelValidation = true;
-            taskData.middleLevelValidationStatus = 'pending';
+            taskData.middleLevelValidator = validator._id;
+            taskData.middleLevelValidatorName = validator.name;
+            taskData.middleLevelValidationStatus = 'not_required'; // Will change when task is completed
         }
 
         // Handle privacy settings
@@ -250,8 +253,6 @@ router.post('/tasks', upload.single('document'), async (req, res) => {
         // If multiple assignees, create individual tasks for each
         if (req.body.assignedToMultiple && JSON.parse(req.body.assignedToMultiple).length > 1) {
             const assignees = JSON.parse(req.body.assignedToMultiple);
-            const additionalTasks = [];
-
             for (let i = 1; i < assignees.length; i++) {
                 const additionalTaskData = { ...taskData };
                 additionalTaskData.assignedTo = assignees[i];
@@ -259,7 +260,6 @@ router.post('/tasks', upload.single('document'), async (req, res) => {
 
                 const additionalTask = new Task(additionalTaskData);
                 await additionalTask.save();
-                additionalTasks.push(additionalTask);
             }
         }
 
@@ -305,29 +305,6 @@ router.get('/tasks', async (req, res) => {
             }
         }
 
-        // Handle existing filters
-        const { filter, status, priority, completed } = req.query;
-
-        if (completed === 'true') {
-            query.status = 'completed';
-        } else if (completed === 'false') {
-            query.status = { $ne: 'completed' };
-        }
-
-        if (status) {
-            if (status === 'overdue') {
-                const today = new Date();
-                today.setHours(23, 59, 59, 999); // End of today
-                query.status = { $in: ['pending', 'in_progress'] };
-                query.dueDate = { $lt: today };
-            } else {
-                query.status = status;
-            }
-        }
-
-        if (priority) {
-            query.priority = priority;
-        }
 
         const tasks = await Task.find(query)
             .populate('assignedTo', 'name')
@@ -339,13 +316,9 @@ router.get('/tasks', async (req, res) => {
                 createdAt: -1
             });
 
-        const tasksWithNames = tasks.map(task => ({
-            ...task.toObject(),
-            assignedToName: task.assignedTo ? task.assignedTo.name : 'Unassigned',
-            middleLevelValidatorName: task.middleLevelValidator ? task.middleLevelValidator.name : null
-        }));
 
-        res.json(tasksWithNames);
+
+        res.json(tasks);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -981,6 +954,38 @@ router.patch('/user-tasks/:id/complete', async (req, res) => {
         });
     } catch (error) {
         console.error('Admin user task completion error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+router.get('/parent-tasks', async (req, res) => {
+    try {
+        let admin = await Admin.findOne();
+        if (!admin) return res.json([]);
+
+        const { soNumber } = req.query;
+        let query = { parentTask: null, adminId: admin._id };
+
+        if (soNumber) {
+            query.soNumber = soNumber;
+        }
+
+        const parentTasks = await Task.find(query)
+            .select('_id title soNumber stage')
+            .sort({ soNumber: 1, stage: 1 });
+
+        // Group by SO number
+        const groupedTasks = parentTasks.reduce((groups, task) => {
+            const key = task.soNumber || 'general';
+            if (!groups[key]) {
+                groups[key] = [];
+            }
+            groups[key].push(task);
+            return groups;
+        }, {});
+
+        res.json(groupedTasks);
+    } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });

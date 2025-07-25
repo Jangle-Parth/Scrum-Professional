@@ -2765,6 +2765,193 @@ function clearTaskFilter() {
     }
 }
 
+function createEnhancedTaskModal() {
+    const existingModal = document.getElementById('taskModal');
+    if (existingModal) {
+        existingModal.innerHTML = `
+            <div class="modal-content glass-dark">
+                <div class="modal-header">
+                    <h3 id="taskModalTitle">Add New Task</h3>
+                    <button class="close-btn" onclick="closeTaskModal()">&times;</button>
+                </div>
+                <form id="taskForm" enctype="multipart/form-data">
+                    <input type="hidden" id="taskId">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskTitle">Task Title</label>
+                            <input type="text" id="taskTitle" class="form-control" required placeholder="Enter task title">
+                        </div>
+                        <div class="form-group">
+                            <label for="taskParentTask">Parent Task (Optional)</label>
+                            <select id="taskParentTask" class="form-control">
+                                <option value="">Select Parent Task</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskAssignedTo">Assigned To</label>
+                            <select id="taskAssignedTo" class="form-control" required>
+                                <option value="">Select User</option>
+                                <!-- Users will be populated here -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskMultipleAssignees">Additional Assignees (Optional)</label>
+                            <select id="taskMultipleAssignees" class="form-control" multiple>
+                                <!-- Users will be populated here -->
+                            </select>
+                            <small class="help-text">Hold Ctrl/Cmd to select multiple users</small>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskMiddleLevelValidator">Middle Level Validator (Optional)</label>
+                            <select id="taskMiddleLevelValidator" class="form-control">
+                                <option value="">No Middle Level Validation</option>
+                                <!-- Users will be populated here -->
+                            </select>
+                            <small class="help-text">Task will go to this person for approval before admin</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskPriority">Priority</label>
+                            <select id="taskPriority" class="form-control" required>
+                                <option value="">Select Priority</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskDueDate">Due Date</label>
+                            <input type="date" id="taskDueDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskDocument">Upload Document (Optional)</label>
+                            <input type="file" id="taskDocument" class="form-control" 
+                                   accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls">
+                            <small class="help-text">Max size: 10MB</small>
+                        </div>
+                    </div>
+
+                    <!-- Job Entry Fields (for daily job tasks) -->
+                    <div class="form-group" id="jobEntryFields" style="display: none;">
+                        <label for="taskSONumber">S.O Number (For Job Tasks)</label>
+                        <input type="text" id="taskSONumber" class="form-control" placeholder="Enter SO Number">
+                        <label for="taskStage" style="margin-top: 10px;">Job Stage</label>
+                        <select id="taskStage" class="form-control">
+                            <option value="">Select Stage</option>
+                            <option value="sales_order_received">Sales Order Received</option>
+                            <option value="drawing_approved">Drawing Approved</option>
+                            <option value="production_started">Production Started</option>
+                            <!-- Add other stages -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskDescription">Description</label>
+                        <textarea id="taskDescription" class="form-control" rows="3" 
+                                  placeholder="Task description and requirements"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> <span id="taskSubmitText">Save Task</span>
+                    </button>
+                </form>
+            </div>
+        `;
+    }
+}
+
+// Enhanced User Task Modal
+function createEnhancedUserTaskModal() {
+    const existingModal = document.getElementById('userTaskModal');
+    if (existingModal) {
+        existingModal.innerHTML = `
+            <div class="modal-content glass-dark">
+                <div class="modal-header">
+                    <h3 id="userTaskModalTitle">Assign New Task</h3>
+                    <button class="close-btn" onclick="closeUserTaskModal()">&times;</button>
+                </div>
+                <form id="userTaskForm" enctype="multipart/form-data">
+                    <input type="hidden" id="userTaskId">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="userTaskTitle">Task Title</label>
+                            <input type="text" id="userTaskTitle" class="form-control" required placeholder="Enter task title">
+                        </div>
+                        <div class="form-group">
+                            <label for="userTaskAssignedTo">Assign To</label>
+                            <select id="userTaskAssignedTo" class="form-control" required>
+                                <option value="">Select Team Member</option>
+                                <!-- Users will be populated here -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Multiple Assignees Option -->
+                    <div class="form-group">
+                        <label for="userTaskMultipleAssignees">Additional Assignees (Optional)</label>
+                        <select id="userTaskMultipleAssignees" class="form-control" multiple>
+                            <!-- Users will be populated here -->
+                        </select>
+                        <small class="help-text">Hold Ctrl/Cmd to select multiple users</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="userTaskPriority">Priority</label>
+                            <select id="userTaskPriority" class="form-control" required>
+                                <option value="">Select Priority</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="userTaskDueDate">Due Date</label>
+                            <input type="date" id="userTaskDueDate" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userTaskDocument">Upload Document (Optional)</label>
+                        <input type="file" id="userTaskDocument" class="form-control" 
+                               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls">
+                        <small class="help-text">Max size: 10MB</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userTaskDescription">Description</label>
+                        <textarea id="userTaskDescription" class="form-control" rows="3" 
+                                  placeholder="Task description and requirements"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="userTaskNotes">Additional Notes</label>
+                        <textarea id="userTaskNotes" class="form-control" rows="2" 
+                                  placeholder="Any additional notes or instructions"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> <span id="userTaskSubmitText">Assign Task</span>
+                    </button>
+                </form>
+            </div>
+        `;
+    }
+}
+
 
 function showSuccessMessage(message) {
     const messageDiv = document.createElement('div');

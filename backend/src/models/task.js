@@ -1,3 +1,4 @@
+// Enhanced Task.js Model (replace your existing Task.js)
 const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema({
@@ -6,6 +7,7 @@ const taskSchema = new mongoose.Schema({
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     assignedToName: String,
 
+    // Middle Level Validation Fields
     middleLevelValidator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     middleLevelValidatorName: String,
     needsMiddleLevelValidation: { type: Boolean, default: false },
@@ -16,18 +18,22 @@ const taskSchema = new mongoose.Schema({
     },
     middleLevelValidatedBy: String,
     middleLevelValidatedAt: Date,
+    middleLevelRemarks: String,
 
+    // Parent Task and Grouping
     parentTask: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
     parentTaskName: String,
     soNumber: String, // For grouping daily job entry tasks
     stage: String,
 
+    // Assignment and Privacy
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     assignedByName: String,
     isPrivate: { type: Boolean, default: false }, // For self-assigned tasks
     isSuperAdminTask: { type: Boolean, default: false }, // Only visible to super admin and assignee
-    visibleTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    visibleTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Multiple assignees
 
+    // Document Attachment
     attachedDocument: {
         filename: String,
         originalName: String,
@@ -37,6 +43,7 @@ const taskSchema = new mongoose.Schema({
         data: Buffer // Store file in MongoDB
     },
 
+    // Delay Requests
     delayRequests: [{
         requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         requestedByName: String,
@@ -61,7 +68,7 @@ const taskSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'in_progress', 'completed', 'cancelled', 'pending_approval'],
+        enum: ['pending', 'in_progress', 'completed', 'cancelled', 'pending_approval', 'pending_middle_validation'],
         default: 'pending'
     },
     completionRequestDate: Date,
@@ -78,5 +85,12 @@ const taskSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
+
+// Add indexes for better performance
+taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ soNumber: 1 });
+taskSchema.index({ parentTask: 1 });
+taskSchema.index({ isSuperAdminTask: 1 });
+taskSchema.index({ isPrivate: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

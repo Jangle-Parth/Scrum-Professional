@@ -1,3 +1,4 @@
+// Enhanced UserTask.js Model (replace your existing UserTask.js)
 const mongoose = require('mongoose');
 
 const userTaskSchema = new mongoose.Schema({
@@ -7,6 +8,23 @@ const userTaskSchema = new mongoose.Schema({
     assignedToName: String,
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     assignedByName: String,
+
+    // Privacy for self-assigned tasks
+    isPrivate: { type: Boolean, default: false },
+
+    // Multiple assignees support
+    visibleTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+    // Document attachment
+    attachedDocument: {
+        filename: String,
+        originalName: String,
+        mimeType: String,
+        size: Number,
+        uploadDate: { type: Date, default: Date.now },
+        data: Buffer
+    },
+
     priority: {
         type: String,
         enum: ['low', 'medium', 'high', 'critical'],
@@ -25,5 +43,10 @@ const userTaskSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
+
+// Add indexes
+userTaskSchema.index({ assignedTo: 1, status: 1 });
+userTaskSchema.index({ assignedBy: 1 });
+userTaskSchema.index({ isPrivate: 1 });
 
 module.exports = mongoose.model('UserTask', userTaskSchema);

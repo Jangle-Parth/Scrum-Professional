@@ -2,7 +2,7 @@
 const express = require('express');
 const multer = require('multer');
 const User = require('../models/User');
-const UserTask = require('../models/UserTask');
+const UserTask = require('../models/usertask');
 const Task = require('../models/Task');
 const Admin = require('../models/Admin');
 const emailService = require('../services/emailService');
@@ -84,7 +84,11 @@ router.get('/:id/tasks', async (req, res) => {
         // Apply privacy filters
         if (currentUser && currentUser.role !== 'super_admin') {
             if (currentUser.role === 'admin') {
-                query.isSuperAdminTask = { $ne: true };
+                // Admin can see tasks but not super admin tasks or private tasks
+                query.$and = [
+                    { isSuperAdminTask: { $ne: true } },
+                    { isPrivate: { $ne: true } }
+                ];
             } else if (currentUser.id !== userId) {
                 // User can only see their own tasks unless they created the task
                 query.$or = [
@@ -98,7 +102,7 @@ router.get('/:id/tasks', async (req, res) => {
             .populate('parentTask', 'title')
             .sort({ dueDate: 1 });
 
-        // FIXED: Proper overdue calculation
+        // Enhanced overdue calculation
         const tasksWithStatus = tasks.map(task => {
             const taskObj = task.toObject();
 
@@ -106,12 +110,12 @@ router.get('/:id/tasks', async (req, res) => {
                 const today = new Date();
                 const dueDate = new Date(task.dueDate);
 
-                // Set to start of day for comparison
-                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+                // Set to end of day for comparison
+                const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+                const dueDateEnd = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 23, 59, 59, 999);
 
-                // Task is overdue only if due date has passed (next day)
-                if (dueDateStart < todayStart) {
+                // Task is overdue only if due date has completely passed
+                if (dueDateEnd < todayEnd) {
                     taskObj.isOverdue = true;
                 }
             }
@@ -192,6 +196,11 @@ router.post('/user-tasks', upload.single('document'), async (req, res) => {
             // Handle privacy for self-assigned tasks
             if (assigningUser._id.toString() === assigneeId.toString()) {
                 fullTaskData.isPrivate = true;
+            }
+
+            // Handle multiple assignees visibility
+            if (assignees.length > 1) {
+                fullTaskData.visibleTo = assignees;
             }
 
             // Handle document upload
@@ -350,55 +359,34 @@ router.put('/user-tasks/:id', async (req, res) => {
 });
 
 // Mark user task as complete
-router.patch('/user-tasks/:id/complete', async (req, res) => {
+router.get('/parent-tasks', async (req, res) => {
     try {
-        const taskId = req.params.id;
-        const { completedBy } = req.body;
+        let admin = await Admin.findOne();
+        if (!admin) return res.json([]);
 
-        const userTask = await UserTask.findById(taskId);
-        if (!userTask) {
-            return res.status(404).json({ message: 'User task not found' });
+        const { soNumber } = req.query;
+        let query = { parentTask: null, adminId: admin._id };
+
+        if (soNumber) {
+            query.soNumber = soNumber;
         }
 
-        const completedAt = new Date();
+        const parentTasks = await Task.find(query)
+            .select('_id title soNumber stage')
+            .sort({ soNumber: 1, stage: 1 });
 
-        const dueDate = new Date(userTask.dueDate);
-        const completedDate = new Date(completedAt);
+        // Group by SO number
+        const groupedTasks = parentTasks.reduce((groups, task) => {
+            const key = task.soNumber || 'general';
+            if (!groups[key]) {
+                groups[key] = [];
+            }
+            groups[key].push(task);
+            return groups;
+        }, {});
 
-        // Set both dates to start of day for proper comparison
-        const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-        const completedDateStart = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
-
-        // Task is on time if completed on or before due date
-        const isOnTime = completedDateStart <= dueDateStart;
-
-        const updateData = {
-            status: 'completed',
-            progress: 100,
-            completedAt: completedAt,
-            isOnTime: isOnTime,
-            updatedAt: new Date()
-        };
-
-        const updatedTask = await UserTask.findByIdAndUpdate(taskId, updateData, { new: true })
-            .populate('assignedTo', 'name email')
-            .populate('assignedBy', 'name email');
-
-        if (updatedTask.assignedTo && updatedTask.assignedTo.email) {
-            await emailService.sendUserTaskCompletionEmail(updatedTask.assignedTo, updatedTask);
-        }
-
-        if (updatedTask.assignedBy && updatedTask.assignedBy.email) {
-            await emailService.sendTaskCompletionNotificationEmail(updatedTask.assignedBy, updatedTask.assignedTo, updatedTask);
-        }
-
-        res.json({
-            success: true,
-            userTask: updatedTask,
-            message: 'Task completed successfully!'
-        });
+        res.json(groupedTasks);
     } catch (error) {
-        console.error('User task completion error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -415,17 +403,13 @@ router.patch('/tasks/:id/complete', async (req, res) => {
         }
 
         const completedAt = new Date();
-
-        // FIXED: Proper date comparison for same day completion
         const dueDate = new Date(task.dueDate);
-        const completedDate = new Date(completedAt);
 
-        // Set both dates to start of day for proper comparison
-        const dueDateStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-        const completedDateStart = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
+        // FIXED: Proper date comparison - task is on time if completed on or before due date
+        const dueDateEnd = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 23, 59, 59, 999);
+        const completedDateEnd = new Date(completedAt.getFullYear(), completedAt.getMonth(), completedAt.getDate(), 23, 59, 59, 999);
 
-        // Task is on time if completed on or before due date
-        const isOnTime = completedDateStart <= dueDateStart;
+        const isOnTime = completedDateEnd <= dueDateEnd;
 
         let updateData = {
             progress: 100,
@@ -434,9 +418,14 @@ router.patch('/tasks/:id/complete', async (req, res) => {
             updatedAt: new Date()
         };
 
-        // Handle middle level validation
-        if (task.needsMiddleLevelValidation) {
+        // Handle middle level validation flow
+        if (task.needsMiddleLevelValidation && task.middleLevelValidationStatus === 'not_required') {
             updateData.status = 'pending_middle_validation';
+            updateData.middleLevelValidationStatus = 'pending';
+            updateData.completionRequestDate = new Date();
+            updateData.requestedBy = completedBy;
+        } else if (task.needsMiddleLevelValidation && task.middleLevelValidationStatus === 'approved') {
+            updateData.status = 'pending_approval';
             updateData.completionRequestDate = new Date();
             updateData.requestedBy = completedBy;
         } else {
@@ -450,13 +439,15 @@ router.patch('/tasks/:id/complete', async (req, res) => {
             .populate('middleLevelValidator', 'name email');
 
         // Send appropriate notifications
-        if (task.needsMiddleLevelValidation && updatedTask.middleLevelValidator) {
+        if (task.needsMiddleLevelValidation && task.middleLevelValidationStatus === 'not_required') {
             // Send to middle level validator
-            await emailService.sendMiddleLevelValidationRequest(
-                updatedTask.middleLevelValidator,
-                updatedTask.assignedTo,
-                updatedTask
-            );
+            if (updatedTask.middleLevelValidator && updatedTask.middleLevelValidator.email) {
+                await emailService.sendMiddleLevelValidationRequest(
+                    updatedTask.middleLevelValidator,
+                    updatedTask.assignedTo,
+                    updatedTask
+                );
+            }
         } else {
             // Send to admin for approval
             const admin = await Admin.findById(task.adminId);
@@ -468,7 +459,7 @@ router.patch('/tasks/:id/complete', async (req, res) => {
         res.json({
             success: true,
             task: updatedTask,
-            message: task.needsMiddleLevelValidation
+            message: task.needsMiddleLevelValidation && task.middleLevelValidationStatus === 'not_required'
                 ? 'Task sent for middle level validation!'
                 : 'Task completion request sent to admin!'
         });

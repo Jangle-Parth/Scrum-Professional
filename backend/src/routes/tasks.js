@@ -1,7 +1,7 @@
 // src/routes/user.js
 const express = require('express');
 const User = require('../models/User');
-const UserTask = require('../models/UserTask');
+const UserTask = require('../models/usertask');
 const Task = require('../models/Task');
 const emailService = require('../services/emailService');
 
