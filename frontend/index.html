@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <script type="text/javascript" src="script.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- Login Screen -->
     <div id="loginScreen" class="login-container">
@@ -119,7 +121,7 @@
                         <div class="stat-number" id="totalUsers">0</div>
                         <div class="stat-label">Total Users</div>
                     </div>
-                    
+
                     <div class="stat-card glass" onclick="showSection('tasks')">
                         <i class="fas fa-tasks stat-icon"></i>
                         <div class="stat-number" id="totalTasks">0</div>
@@ -137,7 +139,8 @@
                         <h3 class="card-title">Recent Activity</h3>
                     </div>
                     <div id="recentActivity">
-                        <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 20px;">Loading recent activity...</p>
+                        <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 20px;">Loading recent
+                            activity...</p>
                     </div>
                 </div>
             </section>
@@ -169,7 +172,9 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="6" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading users...</td>
+                                    <td colspan="6"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading users...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -217,31 +222,35 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="7" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading tasks...</td>
+                                    <td colspan="7"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading tasks...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-                 <div class="card glass" style="margin-top: 30px;">
+                <div class="card glass" style="margin-top: 30px;">
                     <div class="card-header">
                         <h3 class="card-title">Completed Tasks</h3>
                         <div>
-                            <select id="completedTaskFilter" class="form-control" style="width: 200px; display: inline-block;">
+                            <select id="completedTaskFilter" class="form-control"
+                                style="width: 200px; display: inline-block;">
                                 <option value="">All Completed</option>
                                 <option value="on_time">Completed On Time</option>
                                 <option value="late">Completed Late</option>
                                 <option value="this_week">This Week</option>
                                 <option value="this_month">This Month</option>
                             </select>
-                            <button class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);" 
-                                    onclick="toggleCompletedTasks()">
+                            <button class="btn"
+                                style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);"
+                                onclick="toggleCompletedTasks()">
                                 <i class="fas fa-eye" id="toggleCompletedIcon"></i>
                                 <span id="toggleCompletedText">Show Completed</span>
                             </button>
                         </div>
                     </div>
-                    
+
                     <div id="completedTasksContainer" style="display: none;">
                         <div class="table-container">
                             <table id="completedTasksTable">
@@ -258,7 +267,8 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td colspan="7" style="text-align: center; color: #666; padding: 40px;">Loading completed tasks...</td>
+                                        <td colspan="7" style="text-align: center; color: #666; padding: 40px;">Loading
+                                            completed tasks...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -319,7 +329,9 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="7" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading performance data...</td>
+                                    <td colspan="7"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading performance data...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -350,7 +362,9 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="6" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading completion requests...</td>
+                                    <td colspan="6"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading completion requests...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -394,7 +408,9 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="11" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading job entries...</td>
+                                    <td colspan="11"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading job entries...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -426,7 +442,9 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="7" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading dispatched jobs...</td>
+                                    <td colspan="7"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading dispatched jobs...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -459,7 +477,9 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="8" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading user tasks...</td>
+                                    <td colspan="8"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading user tasks...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -471,321 +491,327 @@
 
     <!-- User Dashboard -->
     <div id="userDashboard" class="dashboard user-dashboard">
-    <nav class="sidebar glass-dark">
-        <div class="sidebar-header">
-            <h2><i class="fas fa-user"></i> My Dashboard</h2>
-            <p>Welcome, <span id="currentUser">User</span></p>
-        </div>
-        <ul class="nav-menu">
-            <li class="nav-item">
-                <a href="#" class="nav-link active" data-section="my-sprints">
-                    <i class="fas fa-tasks"></i>
-                    <span>My Tasks</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link" data-section="my-progress">
-                    <i class="fas fa-chart-line"></i>
-                    <span>My Progress</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link" data-section="assign-user-tasks">
-                    <i class="fas fa-user-plus"></i>
-                    <span>Assign Tasks</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link" data-section="received-user-tasks">
-                    <i class="fas fa-inbox"></i>
-                    <span>Tasks from Team</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
-
-    <main class="main-content">
-
-        <section id="my-sprints" class="content-section active">
-    <header class="page-header">
-        <h1 class="page-title">My Tasks</h1>
-    </header>
-
-    <!-- Filter Controls -->
-    <div class="filter-container" style="margin-bottom: 20px;">
-        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Filter:</label>
-                <select id="userTaskStatusFilter" class="form-control" style="width: 150px;" onchange="filterUserTasks()">
-                    <option value="pending">Pending Tasks</option>
-                    <option value="all">All Tasks</option>
-                    <option value="completed">Completed Tasks</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="pending_approval">Pending Approval</option>
-                    <option value="overdue">Overdue</option>
-                </select>
+        <nav class="sidebar glass-dark">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-user"></i> My Dashboard</h2>
+                <p>Welcome, <span id="currentUser">User</span></p>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Sort:</label>
-                <select id="userTaskSortFilter" class="form-control" style="width: 150px;" onchange="filterUserTasks()">
-                    <option value="due_date_asc">Due Date (Earliest)</option>
-                    <option value="due_date_desc">Due Date (Latest)</option>
-                    <option value="created_asc">Created (Oldest)</option>
-                    <option value="created_desc">Created (Newest)</option>
-                    <option value="priority_high">Priority (High First)</option>
-                    <option value="priority_low">Priority (Low First)</option>
-                    <option value="status">Status</option>
-                </select>
-            </div>
-            <button class="btn btn-secondary" onclick="resetUserTaskFilters()" style="padding: 8px 15px;">
-                <i class="fas fa-refresh"></i> Reset
-            </button>
-        </div>
-    </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active" data-section="my-sprints">
+                        <i class="fas fa-tasks"></i>
+                        <span>My Tasks</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="my-progress">
+                        <i class="fas fa-chart-line"></i>
+                        <span>My Progress</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="assign-user-tasks">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Assign Tasks</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="received-user-tasks">
+                        <i class="fas fa-inbox"></i>
+                        <span>Tasks from Team</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
 
-    <!-- Hide the old table -->
-    <div class="table-responsive" style="display: none;">
-        <table id="userTasksTable" class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Task Title</th>
-                    <th>Status</th>
-                    <th>Priority</th>
-                    <th>Due Date</th>
-                    <th>Assigned By</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Tasks will be populated here -->
-            </tbody>
-        </table>
-    </div>
+        <main class="main-content">
 
-    <!-- Expand/Collapse Controls -->
-    <div style="margin-bottom: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-        <button class="btn btn-sm btn-outline-primary" onclick="expandAllGroups()">
-            <i class="fas fa-expand-arrows-alt"></i> Expand All
-        </button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllGroups()">
-            <i class="fas fa-compress-arrows-alt"></i> Collapse All
-        </button>
-    </div>
+            <section id="my-sprints" class="content-section active">
+                <header class="page-header">
+                    <h1 class="page-title">My Tasks</h1>
+                </header>
 
-    <!-- Grouped Task Content Container -->
-    <div id="myTasksContainer">
-        <p style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading tasks...</p>
-    </div>
-</section>
-        <!-- My Progress Section -->
-        <section id="my-progress" class="content-section">
-            <header class="page-header">
-                <h1 class="page-title">My Progress & Analytics</h1>
-            </header>
-
-            <div class="stats-grid">
-                <div class="stat-card glass">
-                    <i class="fas fa-trophy stat-icon"></i>
-                    <div class="stat-number" id="myOverallSuccessRate">0%</div>
-                    <div class="stat-label">Success Rate</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-clock stat-icon"></i>
-                    <div class="stat-number" id="myAvgCompletionDays">0</div>
-                    <div class="stat-label">Avg Completion Days</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-check-circle stat-icon"></i>
-                    <div class="stat-number" id="myOnTimeCompletions">0</div>
-                    <div class="stat-label">On-Time Completions</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-exclamation-triangle stat-icon"></i>
-                    <div class="stat-number" id="myLateCompletions">0</div>
-                    <div class="stat-label">Late Completions</div>
-                </div>
-            </div>
-
-            <div class="card glass">
-                <div class="card-header">
-                    <h3 class="card-title">Detailed Progress</h3>
-                </div>
-                <div id="myPerformanceData">
-                    <p style="text-align: center; color: #666; padding: 40px;">Loading performance data...</p>
-                </div>
-            </div>
-        </section>
-
-
-        <!-- Assign User Tasks Section -->
-        <section id="assign-user-tasks" class="content-section">
-            <header class="page-header">
-                <h1 class="page-title">Assign Tasks to Team</h1>
-                <button class="btn btn-success" onclick="openUserTaskModal()">
-                    <i class="fas fa-plus"></i> Assign New Task
-                </button>
-            </header>
-
-            <div class="stats-grid">
-                <div class="stat-card glass">
-                    <i class="fas fa-share stat-icon"></i>
-                    <div class="stat-number" id="myAssignedTasks">0</div>
-                    <div class="stat-label">Tasks Assigned by Me</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-hourglass-half stat-icon"></i>
-                    <div class="stat-number" id="myAssignedPending">0</div>
-                    <div class="stat-label">Pending</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-check stat-icon"></i>
-                    <div class="stat-number" id="myAssignedCompleted">0</div>
-                    <div class="stat-label">Completed</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-percentage stat-icon"></i>
-                    <div class="stat-number" id="myAssignedCompletionRate">0%</div>
-                    <div class="stat-label">Completion Rate</div>
-                </div>
-            </div>
-
-            <div class="job-filters" style="margin-bottom: 20px;">
-    <div class="row">
-        <div class="col-md-3">
-            <label for="monthFilter">Month:</label>
-            <select id="monthFilter" class="form-control">
-                <option value="">All Months</option>
-                <option value="2024-01">January 2024</option>
-                <option value="2024-02">February 2024</option>
-                <option value="2024-03">March 2024</option>
-                <option value="2024-04">April 2024</option>
-                <option value="2024-05">May 2024</option>
-                <option value="2024-06">June 2024</option>
-                <option value="2024-07">July 2024</option>
-                <option value="2024-08">August 2024</option>
-                <option value="2024-09">September 2024</option>
-                <option value="2024-10">October 2024</option>
-                <option value="2024-11">November 2024</option>
-                <option value="2024-12">December 2024</option>
-                <option value="2025-01">January 2025</option>
-                <option value="2025-02">February 2025</option>
-                <option value="2025-03">March 2025</option>
-                <option value="2025-04">April 2025</option>
-                <option value="2025-05">May 2025</option>
-                <option value="2025-06">June 2025</option>
-                <option value="2025-07">July 2025</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label for="teamFilter">Team:</label>
-            <select id="teamFilter" class="form-control">
-                <option value="">All Teams</option>
-                <option value="development">Development</option>
-                <option value="design">Design</option>
-                <option value="marketing">Marketing</option>
-                <option value="sales">Sales</option>
-                <option value="support">Support</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label for="statusFilter">Status:</label>
-            <select id="statusFilter" class="form-control">
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="hold">Hold</option>
-                <option value="cancelled">Cancelled</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label for="customerFilter">Customer:</label>
-            <select id="customerFilter" class="form-control">
-                <option value="">All Customers</option>
-                <!-- Options will be populated dynamically -->
-            </select>
-        </div>
-    </div>
-</div>
-
-
-            <div class="card glass">
-                <div class="card-header">
-                    <h3 class="card-title">Tasks I've Assigned</h3>
-                    <div style="display: flex; gap: 15px; align-items: center;">
-                        <select id="userTaskFilter" class="form-control" style="width: 150px;" onchange="loadUserAssignedTasks()">
-                            <option value="">All Tasks</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="overdue">Overdue</option>
-                        </select>
+                <!-- Filter Controls -->
+                <div class="filter-container" style="margin-bottom: 20px;">
+                    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Filter:</label>
+                            <select id="userTaskStatusFilter" class="form-control" style="width: 150px;"
+                                onchange="filterUserTasks()">
+                                <option value="pending">Pending Tasks</option>
+                                <option value="all">All Tasks</option>
+                                <option value="completed">Completed Tasks</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="pending_approval">Pending Approval</option>
+                                <option value="overdue">Overdue</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label style="font-weight: 500; color: rgba(255, 255, 255, 0.8);">Sort:</label>
+                            <select id="userTaskSortFilter" class="form-control" style="width: 150px;"
+                                onchange="filterUserTasks()">
+                                <option value="due_date_asc">Due Date (Earliest)</option>
+                                <option value="due_date_desc">Due Date (Latest)</option>
+                                <option value="created_asc">Created (Oldest)</option>
+                                <option value="created_desc">Created (Newest)</option>
+                                <option value="priority_high">Priority (High First)</option>
+                                <option value="priority_low">Priority (Low First)</option>
+                                <option value="status">Status</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary" onclick="resetUserTaskFilters()" style="padding: 8px 15px;">
+                            <i class="fas fa-refresh"></i> Reset
+                        </button>
                     </div>
                 </div>
-                <div class="table-container">
-                    <table id="userAssignedTasksTable">
+
+                <!-- Hide the old table -->
+                <div class="table-responsive" style="display: none;">
+                    <table id="userTasksTable" class="table table-striped">
                         <thead>
                             <tr>
-                                <th>Task</th>
-                                <th>Assigned To</th>
+                                <th>Task Title</th>
+                                <th>Status</th>
                                 <th>Priority</th>
                                 <th>Due Date</th>
-                                <th>Status</th>
-                                <th>Progress</th>
+                                <th>Assigned By</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td colspan="7" style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading assigned tasks...</td>
-                            </tr>
+                            <!-- Tasks will be populated here -->
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </section>
+
+                <!-- Expand/Collapse Controls -->
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-sm btn-outline-primary" onclick="expandAllGroups()">
+                        <i class="fas fa-expand-arrows-alt"></i> Expand All
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllGroups()">
+                        <i class="fas fa-compress-arrows-alt"></i> Collapse All
+                    </button>
+                </div>
+
+                <!-- Grouped Task Content Container -->
+                <div id="myTasksContainer">
+                    <p style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">Loading tasks...</p>
+                </div>
+            </section>
+            <!-- My Progress Section -->
+            <section id="my-progress" class="content-section">
+                <header class="page-header">
+                    <h1 class="page-title">My Progress & Analytics</h1>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <i class="fas fa-trophy stat-icon"></i>
+                        <div class="stat-number" id="myOverallSuccessRate">0%</div>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-clock stat-icon"></i>
+                        <div class="stat-number" id="myAvgCompletionDays">0</div>
+                        <div class="stat-label">Avg Completion Days</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-check-circle stat-icon"></i>
+                        <div class="stat-number" id="myOnTimeCompletions">0</div>
+                        <div class="stat-label">On-Time Completions</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-exclamation-triangle stat-icon"></i>
+                        <div class="stat-number" id="myLateCompletions">0</div>
+                        <div class="stat-label">Late Completions</div>
+                    </div>
+                </div>
+
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3 class="card-title">Detailed Progress</h3>
+                    </div>
+                    <div id="myPerformanceData">
+                        <p style="text-align: center; color: #666; padding: 40px;">Loading performance data...</p>
+                    </div>
+                </div>
+            </section>
 
 
-        <!-- Received User Tasks Section -->
-        <section id="received-user-tasks" class="content-section">
-            <header class="page-header">
-                <h1 class="page-title">Tasks from Team Members</h1>
-            </header>
+            <!-- Assign User Tasks Section -->
+            <section id="assign-user-tasks" class="content-section">
+                <header class="page-header">
+                    <h1 class="page-title">Assign Tasks to Team</h1>
+                    <button class="btn btn-success" onclick="openUserTaskModal()">
+                        <i class="fas fa-plus"></i> Assign New Task
+                    </button>
+                </header>
 
-            <div class="stats-grid">
-                <div class="stat-card glass">
-                    <i class="fas fa-inbox stat-icon"></i>
-                    <div class="stat-number" id="myReceivedUserTasks">0</div>
-                    <div class="stat-label">Tasks Received</div>
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <i class="fas fa-share stat-icon"></i>
+                        <div class="stat-number" id="myAssignedTasks">0</div>
+                        <div class="stat-label">Tasks Assigned by Me</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-hourglass-half stat-icon"></i>
+                        <div class="stat-number" id="myAssignedPending">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-check stat-icon"></i>
+                        <div class="stat-number" id="myAssignedCompleted">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-percentage stat-icon"></i>
+                        <div class="stat-number" id="myAssignedCompletionRate">0%</div>
+                        <div class="stat-label">Completion Rate</div>
+                    </div>
                 </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-hourglass-half stat-icon"></i>
-                    <div class="stat-number" id="myReceivedUserPending">0</div>
-                    <div class="stat-label">Pending</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-check stat-icon"></i>
-                    <div class="stat-number" id="myReceivedUserCompleted">0</div>
-                    <div class="stat-label">Completed</div>
-                </div>
-                <div class="stat-card glass">
-                    <i class="fas fa-percentage stat-icon"></i>
-                    <div class="stat-number" id="myReceivedUserCompletionRate">0%</div>
-                    <div class="stat-label">Completion Rate</div>
-                </div>
-            </div>
 
-            <div class="card glass">
-                <div class="card-header">
-                    <h3 class="card-title">Tasks Assigned to Me by Team</h3>
+                <div class="job-filters" style="margin-bottom: 20px;">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="monthFilter">Month:</label>
+                            <select id="monthFilter" class="form-control">
+                                <option value="">All Months</option>
+                                <option value="2024-01">January 2024</option>
+                                <option value="2024-02">February 2024</option>
+                                <option value="2024-03">March 2024</option>
+                                <option value="2024-04">April 2024</option>
+                                <option value="2024-05">May 2024</option>
+                                <option value="2024-06">June 2024</option>
+                                <option value="2024-07">July 2024</option>
+                                <option value="2024-08">August 2024</option>
+                                <option value="2024-09">September 2024</option>
+                                <option value="2024-10">October 2024</option>
+                                <option value="2024-11">November 2024</option>
+                                <option value="2024-12">December 2024</option>
+                                <option value="2025-01">January 2025</option>
+                                <option value="2025-02">February 2025</option>
+                                <option value="2025-03">March 2025</option>
+                                <option value="2025-04">April 2025</option>
+                                <option value="2025-05">May 2025</option>
+                                <option value="2025-06">June 2025</option>
+                                <option value="2025-07">July 2025</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="teamFilter">Team:</label>
+                            <select id="teamFilter" class="form-control">
+                                <option value="">All Teams</option>
+                                <option value="development">Development</option>
+                                <option value="design">Design</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="sales">Sales</option>
+                                <option value="support">Support</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="statusFilter">Status:</label>
+                            <select id="statusFilter" class="form-control">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="hold">Hold</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="customerFilter">Customer:</label>
+                            <select id="customerFilter" class="form-control">
+                                <option value="">All Customers</option>
+                                <!-- Options will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div id="receivedUserTasksContainer">
-                    <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 40px;">Loading received tasks...</p>
+
+
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3 class="card-title">Tasks I've Assigned</h3>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <select id="userTaskFilter" class="form-control" style="width: 150px;"
+                                onchange="loadUserAssignedTasks()">
+                                <option value="">All Tasks</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="overdue">Overdue</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="userAssignedTasksTable">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Assigned To</th>
+                                    <th>Priority</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="7"
+                                        style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;">
+                                        Loading assigned tasks...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-        </section>
-    </main>
-</div>
+            </section>
+
+
+            <!-- Received User Tasks Section -->
+            <section id="received-user-tasks" class="content-section">
+                <header class="page-header">
+                    <h1 class="page-title">Tasks from Team Members</h1>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <i class="fas fa-inbox stat-icon"></i>
+                        <div class="stat-number" id="myReceivedUserTasks">0</div>
+                        <div class="stat-label">Tasks Received</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-hourglass-half stat-icon"></i>
+                        <div class="stat-number" id="myReceivedUserPending">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-check stat-icon"></i>
+                        <div class="stat-number" id="myReceivedUserCompleted">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <i class="fas fa-percentage stat-icon"></i>
+                        <div class="stat-number" id="myReceivedUserCompletionRate">0%</div>
+                        <div class="stat-label">Completion Rate</div>
+                    </div>
+                </div>
+
+                <div class="card glass">
+                    <div class="card-header">
+                        <h3 class="card-title">Tasks Assigned to Me by Team</h3>
+                    </div>
+                    <div id="receivedUserTasksContainer">
+                        <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 40px;">Loading received
+                            tasks...</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
 
 
 
@@ -811,11 +837,13 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="userEmail">Email</label>
-                        <input type="email" id="userEmail" class="form-control" required placeholder="Enter email address">
+                        <input type="email" id="userEmail" class="form-control" required
+                            placeholder="Enter email address">
                     </div>
                     <div class="form-group">
                         <label for="userPassword">Password</label>
-                        <input type="password" id="userPassword" class="form-control" required placeholder="Enter password">
+                        <input type="password" id="userPassword" class="form-control" required
+                            placeholder="Enter password">
                     </div>
                 </div>
                 <div class="form-row">
@@ -852,305 +880,310 @@
     </div>
 
     <div id="jobStatusModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="jobStatusModalTitle">Update Job Status</h2>
-            <span class="close" onclick="closeJobStatusModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <form id="jobStatusForm">
-                <input type="hidden" id="currentJobId">
-                <input type="hidden" id="currentJobStatus">
-                
-                <div class="form-group">
-                    <label for="jobStatus">New Status:</label>
-                    <select id="jobStatus" class="form-control" required>
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="hold">Hold</option>
-                        <option value="so_cancelled">SO Cancelled</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="jobRemarks">Remarks:</label>
-                    <textarea id="jobRemarks" class="form-control" rows="3"></textarea>
-                </div>
-                
-                <div id="holdRestartSection" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="jobStatusModalTitle">Update Job Status</h2>
+                <span class="close" onclick="closeJobStatusModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="jobStatusForm">
+                    <input type="hidden" id="currentJobId">
+                    <input type="hidden" id="currentJobStatus">
+
                     <div class="form-group">
-                        <label for="statusReason">Reason for Status Change:</label>
-                        <textarea id="statusReason" class="form-control" rows="2" placeholder="Please provide reason for restarting from hold..."></textarea>
+                        <label for="jobStatus">New Status:</label>
+                        <select id="jobStatus" class="form-control" required>
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="hold">Hold</option>
+                            <option value="so_cancelled">SO Cancelled</option>
+                        </select>
                     </div>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Update Status</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeJobStatusModal()">Cancel</button>
-                </div>
-            </form>
+
+                    <div class="form-group">
+                        <label for="jobRemarks">Remarks:</label>
+                        <textarea id="jobRemarks" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div id="holdRestartSection" style="display: none;">
+                        <div class="form-group">
+                            <label for="statusReason">Reason for Status Change:</label>
+                            <textarea id="statusReason" class="form-control" rows="2"
+                                placeholder="Please provide reason for restarting from hold..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Update Status</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeJobStatusModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- 7. Completion Request Modal -->
-<div id="completionRequestModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Request Task Completion</h2>
-            <span class="close" onclick="closeCompletionRequestModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <form id="completionRequestForm">
-                <input type="hidden" id="completionTaskId">
-                
-                <div class="form-group">
-                    <label for="completionRemarks">Completion Notes:</label>
-                    <textarea id="completionRemarks" class="form-control" rows="4" placeholder="Please describe what was completed and any additional notes..."></textarea>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Request Completion</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeCompletionRequestModal()">Cancel</button>
-                </div>
-            </form>
+    <!-- 7. Completion Request Modal -->
+    <div id="completionRequestModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Request Task Completion</h2>
+                <span class="close" onclick="closeCompletionRequestModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="completionRequestForm">
+                    <input type="hidden" id="completionTaskId">
+
+                    <div class="form-group">
+                        <label for="completionRemarks">Completion Notes:</label>
+                        <textarea id="completionRemarks" class="form-control" rows="4"
+                            placeholder="Please describe what was completed and any additional notes..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Request Completion</button>
+                        <button type="button" class="btn btn-secondary"
+                            onclick="closeCompletionRequestModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
 
-   
+
 
     <div id="taskModal" class="modal">
-    <div class="modal-content glass-dark">
-        <div class="modal-header">
-            <h3 id="taskModalTitle">Add New Task</h3>
-            <button class="close-btn" onclick="closeTaskModal()">&times;</button>
-        </div>
-        <form id="taskForm" enctype="multipart/form-data">
-            <input type="hidden" id="taskId">
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label for="taskTitle">Task Title *</label>
-                    <input type="text" id="taskTitle" class="form-control" required placeholder="Enter task title">
-                </div>
-                <div class="form-group">
-                    <label for="taskParentTask">Parent Task (Optional)</label>
-                    <select id="taskParentTask" class="form-control">
-                        <option value="">Select Parent Task</option>
-                        <!-- Will be populated dynamically -->
-                    </select>
-                </div>
+        <div class="modal-content glass-dark">
+            <div class="modal-header">
+                <h3 id="taskModalTitle">Add New Task</h3>
+                <button class="close-btn" onclick="closeTaskModal()">&times;</button>
             </div>
+            <form id="taskForm" enctype="multipart/form-data">
+                <input type="hidden" id="taskId">
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label for="taskAssignedTo">Primary Assignee *</label>
-                    <select id="taskAssignedTo" class="form-control" required>
-                        <option value="">Select User</option>
-                        <!-- Users will be populated here -->
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="taskMultipleAssignees">Additional Assignees (Optional)</label>
-                    <select id="taskMultipleAssignees" class="form-control" multiple style="height: 80px;">
-                        <!-- Users will be populated here -->
-                    </select>
-                    <small style="color: #999; font-size: 12px;">Hold Ctrl/Cmd to select multiple</small>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label for="taskMiddleLevelValidator">Middle Level Validator (Optional)</label>
-                    <select id="taskMiddleLevelValidator" class="form-control">
-                        <option value="">No Middle Level Validation</option>
-                        <!-- Users will be populated here -->
-                    </select>
-                    <small style="color: #999; font-size: 12px;">Task will go to this person before admin</small>
-                </div>
-                <div class="form-group">
-                    <label for="taskPriority">Priority *</label>
-                    <select id="taskPriority" class="form-control" required>
-                        <option value="">Select Priority</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                    </select>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label for="taskDueDate">Due Date *</label>
-                    <input type="date" id="taskDueDate" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="taskDocument">Upload Document (Optional)</label>
-                    <input type="file" id="taskDocument" class="form-control" 
-                           accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls">
-                    <small style="color: #999; font-size: 12px;">Max size: 10MB</small>
-                </div>
-            </div>
-
-            <!-- Job Entry Fields (for daily job tasks) -->
-            <div id="jobEntryFields" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <h4 style="margin: 0 0 10px 0; color: #333;">Job Entry Details</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div class="form-group">
-                        <label for="taskSONumber">S.O Number</label>
-                        <input type="text" id="taskSONumber" class="form-control" placeholder="Enter SO Number">
+                        <label for="taskTitle">Task Title *</label>
+                        <input type="text" id="taskTitle" class="form-control" required placeholder="Enter task title">
                     </div>
                     <div class="form-group">
-                        <label for="taskStage">Job Stage</label>
-                        <select id="taskStage" class="form-control">
-                            <option value="">Select Stage</option>
-                            <option value="sales_order_received">Sales Order Received</option>
-                            <option value="drawing_approved">Drawing Approved</option>
-                            <option value="production_started">Production Started</option>
-                            <option value="production_completed">Production Completed</option>
-                            <option value="dispatched">Dispatched</option>
+                        <label for="taskParentTask">Parent Task (Optional)</label>
+                        <select id="taskParentTask" class="form-control">
+                            <option value="">Select Parent Task</option>
+                            <!-- Will be populated dynamically -->
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="taskDescription">Description</label>
-                <textarea id="taskDescription" class="form-control" rows="4" 
-                          placeholder="Task description and requirements"></textarea>
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="btn btn-primary" style="flex: 1;">
-                    <i class="fas fa-save"></i> <span id="taskSubmitText">Save Task</span>
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="toggleJobEntryFields()">
-                    <i class="fas fa-industry"></i> Job Task
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-
-<!-- Enhanced User Task Modal -->
-<div id="userTaskModal" class="modal">
-    <div class="modal-content glass-dark">
-        <div class="modal-header">
-            <h3 id="userTaskModalTitle">Assign New Task</h3>
-            <button class="close-btn" onclick="closeUserTaskModal()">&times;</button>
-        </div>
-        <form id="userTaskForm" enctype="multipart/form-data">
-            <input type="hidden" id="userTaskId">
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group">
-                    <label for="userTaskTitle">Task Title *</label>
-                    <input type="text" id="userTaskTitle" class="form-control" required placeholder="Enter task title">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="taskAssignedTo">Primary Assignee *</label>
+                        <select id="taskAssignedTo" class="form-control" required>
+                            <option value="">Select User</option>
+                            <!-- Users will be populated here -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskMultipleAssignees">Additional Assignees (Optional)</label>
+                        <select id="taskMultipleAssignees" class="form-control" multiple style="height: 80px;">
+                            <!-- Users will be populated here -->
+                        </select>
+                        <small style="color: #999; font-size: 12px;">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
                 </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="taskMiddleLevelValidator">Middle Level Validator (Optional)</label>
+                        <select id="taskMiddleLevelValidator" class="form-control">
+                            <option value="">No Middle Level Validation</option>
+                            <!-- Users will be populated here -->
+                        </select>
+                        <small style="color: #999; font-size: 12px;">Task will go to this person before admin</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Priority *</label>
+                        <select id="taskPriority" class="form-control" required>
+                            <option value="">Select Priority</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="taskDueDate">Due Date *</label>
+                        <input type="date" id="taskDueDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDocument">Upload Document (Optional)</label>
+                        <input type="file" id="taskDocument" class="form-control"
+                            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls">
+                        <small style="color: #999; font-size: 12px;">Max size: 10MB</small>
+                    </div>
+                </div>
+
+                <!-- Job Entry Fields (for daily job tasks) -->
+                <div id="jobEntryFields"
+                    style="display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: #333;">Job Entry Details</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label for="taskSONumber">S.O Number</label>
+                            <input type="text" id="taskSONumber" class="form-control" placeholder="Enter SO Number">
+                        </div>
+                        <div class="form-group">
+                            <label for="taskStage">Job Stage</label>
+                            <select id="taskStage" class="form-control">
+                                <option value="">Select Stage</option>
+                                <option value="sales_order_received">Sales Order Received</option>
+                                <option value="drawing_approved">Drawing Approved</option>
+                                <option value="production_started">Production Started</option>
+                                <option value="production_completed">Production Completed</option>
+                                <option value="dispatched">Dispatched</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
-                    <label for="userTaskAssignedTo">Primary Assignee *</label>
-                    <select id="userTaskAssignedTo" class="form-control" required>
-                        <option value="">Select Team Member</option>
+                    <label for="taskDescription">Description</label>
+                    <textarea id="taskDescription" class="form-control" rows="4"
+                        placeholder="Task description and requirements"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        <i class="fas fa-save"></i> <span id="taskSubmitText">Save Task</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleJobEntryFields()">
+                        <i class="fas fa-industry"></i> Job Task
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Enhanced User Task Modal -->
+    <div id="userTaskModal" class="modal">
+        <div class="modal-content glass-dark">
+            <div class="modal-header">
+                <h3 id="userTaskModalTitle">Assign New Task</h3>
+                <button class="close-btn" onclick="closeUserTaskModal()">&times;</button>
+            </div>
+            <form id="userTaskForm" enctype="multipart/form-data">
+                <input type="hidden" id="userTaskId">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="userTaskTitle">Task Title *</label>
+                        <input type="text" id="userTaskTitle" class="form-control" required
+                            placeholder="Enter task title">
+                    </div>
+                    <div class="form-group">
+                        <label for="userTaskAssignedTo">Primary Assignee *</label>
+                        <select id="userTaskAssignedTo" class="form-control" required>
+                            <option value="">Select Team Member</option>
+                            <!-- Users will be populated here -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Multiple Assignees Option -->
+                <div class="form-group">
+                    <label for="userTaskMultipleAssignees">Additional Assignees (Optional)</label>
+                    <select id="userTaskMultipleAssignees" class="form-control" multiple style="height: 80px;">
                         <!-- Users will be populated here -->
                     </select>
+                    <small style="color: #999; font-size: 12px;">Hold Ctrl/Cmd to select multiple team members</small>
                 </div>
-            </div>
 
-            <!-- Multiple Assignees Option -->
-            <div class="form-group">
-                <label for="userTaskMultipleAssignees">Additional Assignees (Optional)</label>
-                <select id="userTaskMultipleAssignees" class="form-control" multiple style="height: 80px;">
-                    <!-- Users will be populated here -->
-                </select>
-                <small style="color: #999; font-size: 12px;">Hold Ctrl/Cmd to select multiple team members</small>
-            </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="userTaskPriority">Priority *</label>
+                        <select id="userTaskPriority" class="form-control" required>
+                            <option value="">Select Priority</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="userTaskDueDate">Due Date *</label>
+                        <input type="date" id="userTaskDueDate" class="form-control" required>
+                    </div>
+                </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                 <div class="form-group">
-                    <label for="userTaskPriority">Priority *</label>
-                    <select id="userTaskPriority" class="form-control" required>
-                        <option value="">Select Priority</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                    </select>
+                    <label for="userTaskDocument">Upload Document (Optional)</label>
+                    <input type="file" id="userTaskDocument" class="form-control"
+                        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls">
+                    <small style="color: #999; font-size: 12px;">Max size: 10MB</small>
                 </div>
-                <div class="form-group">
-                    <label for="userTaskDueDate">Due Date *</label>
-                    <input type="date" id="userTaskDueDate" class="form-control" required>
-                </div>
-            </div>
 
-            <div class="form-group">
-                <label for="userTaskDocument">Upload Document (Optional)</label>
-                <input type="file" id="userTaskDocument" class="form-control" 
-                       accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls">
-                <small style="color: #999; font-size: 12px;">Max size: 10MB</small>
-            </div>
-
-            <div class="form-group">
-                <label for="userTaskDescription">Description</label>
-                <textarea id="userTaskDescription" class="form-control" rows="3" 
-                          placeholder="Task description and requirements"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label for="userTaskNotes">Additional Notes</label>
-                <textarea id="userTaskNotes" class="form-control" rows="2" 
-                          placeholder="Any additional notes or instructions"></textarea>
-            </div>
-            
-            <button type="submit" class="btn btn-primary" style="width: 100%;">
-                <i class="fas fa-save"></i> <span id="userTaskSubmitText">Assign Task</span>
-            </button>
-        </form>
-    </div>
-</div>
-
-<div id="taskDelayModal" class="modal">
-    <div class="modal-content glass-dark">
-        <div class="modal-header">
-            <h3>Request Task Delay</h3>
-            <button class="close-btn" onclick="closeTaskDelayModal()">&times;</button>
-        </div>
-        <form id="taskDelayForm">
-            <input type="hidden" id="delayTaskId">
-            <div style="padding: 20px;">
                 <div class="form-group">
-                    <label for="requestedDueDate">New Due Date *</label>
-                    <input type="date" id="requestedDueDate" class="form-control" required>
+                    <label for="userTaskDescription">Description</label>
+                    <textarea id="userTaskDescription" class="form-control" rows="3"
+                        placeholder="Task description and requirements"></textarea>
                 </div>
+
                 <div class="form-group">
-                    <label for="delayReason">Reason for Delay *</label>
-                    <textarea id="delayReason" class="form-control" rows="4" required 
-                              placeholder="Please provide a detailed reason for the delay request..."></textarea>
+                    <label for="userTaskNotes">Additional Notes</label>
+                    <textarea id="userTaskNotes" class="form-control" rows="2"
+                        placeholder="Any additional notes or instructions"></textarea>
                 </div>
+
                 <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <i class="fas fa-clock"></i> Submit Delay Request
+                    <i class="fas fa-save"></i> <span id="userTaskSubmitText">Assign Task</span>
                 </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
-</div>
 
-<!-- Middle Level Validation Modal -->
-<div id="middleLevelValidationModal" class="modal">
-    <div class="modal-content glass-dark">
-        <div class="modal-header">
-            <h3>Middle Level Task Validation</h3>
-            <button class="close-btn" onclick="closeMiddleLevelValidationModal()">&times;</button>
-        </div>
-        <div id="middleLevelValidationContent">
-            <!-- Content will be loaded dynamically -->
+    <div id="taskDelayModal" class="modal">
+        <div class="modal-content glass-dark">
+            <div class="modal-header">
+                <h3>Request Task Delay</h3>
+                <button class="close-btn" onclick="closeTaskDelayModal()">&times;</button>
+            </div>
+            <form id="taskDelayForm">
+                <input type="hidden" id="delayTaskId">
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label for="requestedDueDate">New Due Date *</label>
+                        <input type="date" id="requestedDueDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="delayReason">Reason for Delay *</label>
+                        <textarea id="delayReason" class="form-control" rows="4" required
+                            placeholder="Please provide a detailed reason for the delay request..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-clock"></i> Submit Delay Request
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
+
+    <!-- Middle Level Validation Modal -->
+    <div id="middleLevelValidationModal" class="modal">
+        <div class="modal-content glass-dark">
+            <div class="modal-header">
+                <h3>Middle Level Task Validation</h3>
+                <button class="close-btn" onclick="closeMiddleLevelValidationModal()">&times;</button>
+            </div>
+            <div id="middleLevelValidationContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
 
     <!-- Completion Request Modal -->
     <div id="completionRequestModal" class="modal">
@@ -1164,8 +1197,8 @@
                 <div style="padding: 20px;">
                     <div class="form-group">
                         <label for="completionRemarks">Completion Remarks</label>
-                        <textarea id="completionRemarks" class="form-control" rows="4" 
-                                placeholder="Please provide details about task completion..." required></textarea>
+                        <textarea id="completionRemarks" class="form-control" rows="4"
+                            placeholder="Please provide details about task completion..." required></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-check"></i> Request Completion Approval
@@ -1189,4 +1222,5 @@
     </div>
 
 </body>
+
 </html>

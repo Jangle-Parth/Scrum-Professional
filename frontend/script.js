@@ -10,8 +10,6 @@ let currentTaskFilter = '';
 let completedTasksVisible = false;
 let allTasks = [];
 let completedTasks = [];
-let allUserTasks = [];
-let filteredUserTasks = [];
 let allJobEntries = [];
 let stageAssignments = [];
 
@@ -1193,42 +1191,95 @@ async function loadUserTasks() {
     try {
         if (!currentUser || !currentUser.id) {
             console.error('No current user found for loading tasks');
-            const container = document.getElementById('myTasksContainer');
-            if (container) {
-                container.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 40px;">Please login to view your tasks.</p>';
-            }
             return;
         }
 
         console.log('Loading user tasks for user ID:', currentUser.id);
-
-        // Show loading state
-        const container = document.getElementById('myTasksContainer');
-        if (container) {
-            container.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.7); padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Loading tasks...</p>';
-        }
-
         const tasks = await apiCall(`/user/${currentUser.id}/tasks`);
-        console.log('Tasks received:', tasks);
 
-        // Store tasks globally for filtering
-        allUserTasks = tasks || [];
-        filteredUserTasks = allUserTasks;
+        // Group tasks by title
+        const grouped = {};
+        tasks.forEach(task => {
+            if (!grouped[task.title]) grouped[task.title] = [];
+            grouped[task.title].push(task);
+        });
 
-        // Hide the table and show the grouped view
-        const tableContainer = document.querySelector('#userTasksTable');
-        if (tableContainer) {
-            tableContainer.parentElement.style.display = 'none';
+        // Check if table body exists before trying to populate it
+        const tableBody = document.querySelector('#userTasksTable tbody');
+        if (!tableBody) {
+            console.log('User tasks table body not found');
+            return;
         }
 
-        // Use the grouped rendering function
-        renderUserTasksGrouped(filteredUserTasks);
+        // Clear existing content
+        tableBody.innerHTML = '';
 
+        if (!tasks || tasks.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">No tasks assigned</td></tr>';
+            return;
+        }
+
+        // Render grouped tasks as accordions
+        Object.keys(grouped).forEach((title, idx) => {
+            const groupId = `task-group-${idx}`;
+            // Group header row
+            const groupRow = document.createElement('tr');
+            groupRow.className = 'task-group-header';
+            groupRow.style.cursor = 'pointer';
+            groupRow.innerHTML = `
+                <td colspan="6" style="background: rgba(102, 126, 234, 0.08); font-weight: bold; color: #667eea;">
+                    <span style="margin-right: 10px;">
+                        <i class="fas fa-folder"></i>
+                    </span>
+                    <span>${title}</span>
+                    <span style="float: right; font-size: 0.9em; color: #888;">${grouped[title].length} task(s)
+                        <i class="fas fa-chevron-down" id="chevron-${groupId}"></i>
+                    </span>
+                </td>
+            `;
+            groupRow.addEventListener('click', () => {
+                const rows = document.querySelectorAll(`.task-group-child[data-group='${groupId}']`);
+                const chevron = document.getElementById(`chevron-${groupId}`);
+                rows.forEach(row => {
+                    row.style.display = row.style.display === 'none' ? '' : 'none';
+                });
+                if (chevron) {
+                    chevron.classList.toggle('fa-chevron-down');
+                    chevron.classList.toggle('fa-chevron-up');
+                }
+            });
+            tableBody.appendChild(groupRow);
+
+            // Child rows (hidden by default)
+            grouped[title].forEach(task => {
+                const row = document.createElement('tr');
+                row.className = 'task-group-child';
+                row.setAttribute('data-group', groupId);
+                row.style.display = 'none';
+                row.innerHTML = `
+                    <td>${task.title}</td>
+                    <td><span class="status-badge status-${task.status}">${task.status.replace('_', ' ')}</span></td>
+                    <td><span class="priority-badge priority-${task.priority}">${task.priority}</span></td>
+                    <td>${new Date(task.dueDate).toLocaleDateString()}</td>
+                    <td>${task.assignedByName || 'Unknown'}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="viewTask('${task._id}')">View</button>
+                        ${(task.status === 'pending' || task.status === 'in_progress') ?
+                        `<button class="btn btn-success btn-sm" onclick="requestCompletion('${task._id}')">Request Completion</button>` :
+                        ''
+                    }
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        });
+
+        console.log('User tasks loaded successfully:', tasks.length, 'tasks');
     } catch (error) {
         console.error('Error loading user tasks:', error);
-        const container = document.getElementById('myTasksContainer');
-        if (container) {
-            container.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 40px;">Error loading tasks: ' + error.message + '<br><button onclick="loadUserTasks()" class="btn btn-primary" style="margin-top: 10px;">Retry</button></p>';
+        const tableBody = document.querySelector('#userTasksTable tbody');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666; padding: 40px;">Error loading tasks: ' + error.message + '</td></tr>';
         }
     }
 }
@@ -2472,6 +2523,13 @@ async function loadUserTasks() {
         console.log('Loading user tasks for user ID:', currentUser.id);
         const tasks = await apiCall(`/user/${currentUser.id}/tasks`);
 
+        // Group tasks by title
+        const grouped = {};
+        tasks.forEach(task => {
+            if (!grouped[task.title]) grouped[task.title] = [];
+            grouped[task.title].push(task);
+        });
+
         // Check if table body exists before trying to populate it
         const tableBody = document.querySelector('#userTasksTable tbody');
         if (!tableBody) {
@@ -2487,24 +2545,59 @@ async function loadUserTasks() {
             return;
         }
 
-        // Populate table
-        tasks.forEach(task => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${task.title}</td>
-                <td><span class="status-badge status-${task.status}">${task.status.replace('_', ' ')}</span></td>
-                <td><span class="priority-badge priority-${task.priority}">${task.priority}</span></td>
-                <td>${new Date(task.dueDate).toLocaleDateString()}</td>
-                <td>${task.assignedByName || 'Unknown'}</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" onclick="viewTask('${task._id}')">View</button>
-                    ${task.status === 'pending' || task.status === 'in_progress' ?
-                    `<button class="btn btn-success btn-sm" onclick="requestCompletion('${task._id}')">Request Completion</button>` :
-                    ''
-                }
+        // Render grouped tasks as accordions
+        Object.keys(grouped).forEach((title, idx) => {
+            const groupId = `task-group-${idx}`;
+            // Group header row
+            const groupRow = document.createElement('tr');
+            groupRow.className = 'task-group-header';
+            groupRow.style.cursor = 'pointer';
+            groupRow.innerHTML = `
+                <td colspan="6" style="background: rgba(102, 126, 234, 0.08); font-weight: bold; color: #667eea;">
+                    <span style="margin-right: 10px;">
+                        <i class="fas fa-folder"></i>
+                    </span>
+                    <span>${title}</span>
+                    <span style="float: right; font-size: 0.9em; color: #888;">${grouped[title].length} task(s)
+                        <i class="fas fa-chevron-down" id="chevron-${groupId}"></i>
+                    </span>
                 </td>
             `;
-            tableBody.appendChild(row);
+            groupRow.addEventListener('click', () => {
+                const rows = document.querySelectorAll(`.task-group-child[data-group='${groupId}']`);
+                const chevron = document.getElementById(`chevron-${groupId}`);
+                rows.forEach(row => {
+                    row.style.display = row.style.display === 'none' ? '' : 'none';
+                });
+                if (chevron) {
+                    chevron.classList.toggle('fa-chevron-down');
+                    chevron.classList.toggle('fa-chevron-up');
+                }
+            });
+            tableBody.appendChild(groupRow);
+
+            // Child rows (hidden by default)
+            grouped[title].forEach(task => {
+                const row = document.createElement('tr');
+                row.className = 'task-group-child';
+                row.setAttribute('data-group', groupId);
+                row.style.display = 'none';
+                row.innerHTML = `
+                    <td>${task.title}</td>
+                    <td><span class="status-badge status-${task.status}">${task.status.replace('_', ' ')}</span></td>
+                    <td><span class="priority-badge priority-${task.priority}">${task.priority}</span></td>
+                    <td>${new Date(task.dueDate).toLocaleDateString()}</td>
+                    <td>${task.assignedByName || 'Unknown'}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="viewTask('${task._id}')">View</button>
+                        ${(task.status === 'pending' || task.status === 'in_progress') ?
+                        `<button class="btn btn-success btn-sm" onclick="requestCompletion('${task._id}')">Request Completion</button>` :
+                        ''
+                    }
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
         });
 
         console.log('User tasks loaded successfully:', tasks.length, 'tasks');
