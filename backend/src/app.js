@@ -13,7 +13,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/user');
 const taskRoutes = require('./routes/tasks');
-const jobRoutes = require('./routes/jobs');
+const jobsRoutes = require('./routes/jobs');
 const analyticsRoutes = require('./routes/analytics');
 
 // Import cron jobs
@@ -31,7 +31,7 @@ app.use('/api/auth', authRoutes); // No auth needed for login
 app.use('/api/admin', auth, adminRoutes); // Auth required
 app.use('/api/user', auth, userRoutes); // Auth required  
 app.use('/api/tasks', auth, taskRoutes); // Auth required
-app.use('/api/jobs', auth, jobRoutes); // Auth required
+app.use('/api/job-entries', jobsRoutes); // Auth required
 app.use('/api/analytics', auth, analyticsRoutes); // Auth required
 
 // Health check - no auth needed

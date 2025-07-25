@@ -697,66 +697,6 @@ router.get('/dispatched-jobs', async (req, res) => {
     }
 });
 
-// Enhanced job entries route with better debugging
-router.get('/job-entries', async (req, res) => {
-    try {
-        console.log('Loading job entries with filters:', req.query);
-
-        let admin = await Admin.findOne();
-        if (!admin) {
-            console.log('No admin found for job entries');
-            return res.json([]);
-        }
-
-        const { month, team, status, customer } = req.query;
-        let query = { adminId: admin._id };
-
-        if (month && month.trim() !== '') {
-            query.month = { $regex: month.trim(), $options: 'i' };
-        }
-
-        if (team && team.trim() !== '') {
-            query.team = team.trim();
-        }
-
-        if (status && status.trim() !== '') {
-            query.status = status.trim();
-        }
-
-        if (customer && customer.trim() !== '') {
-            query.customer = { $regex: customer.trim(), $options: 'i' };
-        }
-
-        console.log('Job entries query:', query);
-
-        const entries = await JobEntry.find(query)
-            .sort({ createdAt: -1 })
-            .limit(500); // Prevent memory issues
-
-        console.log(`Found ${entries.length} job entries`);
-
-        // Fix the assignedUsername issue
-        const fixedEntries = entries.map(entry => {
-            const entryObj = entry.toObject();
-
-            // Fix any entries still showing 'jpg' 
-            if (entryObj.assignedUsername === 'jpg') {
-                entryObj.assignedUsername = '';
-            }
-
-            return entryObj;
-        });
-
-        res.json(fixedEntries);
-    } catch (error) {
-        console.error('Error loading job entries:', error);
-        res.status(500).json({
-            message: 'Server error loading job entries',
-            error: error.message
-        });
-    }
-});
-
 // Enhanced user assigned tasks route
 router.get('/user-assigned-tasks', async (req, res) => {
     try {

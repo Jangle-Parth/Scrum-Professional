@@ -1,4 +1,3 @@
-
 const API_BASE_URL = 'http://localhost:3000/api';
 // const API_BASE_URL = 'https://scrum-18k5.onrender.com/api';
 
@@ -5143,10 +5142,22 @@ function updateJobStatusModalHTML() {
                         </div>
                         <form id="jobStatusForm">
                             <input type="hidden" id="currentJobId">
+                            <input type="hidden" id="currentJobStatus">
                             <div style="padding: 20px;">
+                                
+                                <!-- Hold Restart Section -->
+                                <div id="holdRestartSection" style="display: none; background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                    <h4 style="color: #856404; margin: 0 0 15px 0;">
+                                        <i class="fas fa-play-circle"></i> Restart Job from Hold
+                                    </h4>
+                                    <p style="color: #856404; margin-bottom: 15px;">
+                                        This job is currently on hold. Select the stage from which you want to restart the job:
+                                    </p>
+                                </div>
+                                
                                 <div class="form-group">
                                     <label for="jobStatus">Status</label>
-                                    <select id="jobStatus" class="form-control" required>
+                                    <select id="jobStatus" class="form-control" required onchange="handleStatusChange()">
                                         <option value="sales_order_received">Sales Order Received</option>
                                         <option value="drawing_approved">Drawing Approved</option>
                                         <option value="long_lead_item_details_given">Long Lead Item Details Given</option>
@@ -5158,17 +5169,40 @@ function updateJobStatusModalHTML() {
                                         <option value="qc_clear_for_dispatch">QC Clear for Dispatch</option>
                                         <option value="dispatch_clearance">Dispatch Clearance</option>
                                         <option value="dispatched">Dispatched</option>
+                                        <option value="hold" style="color: #ff6b35;">⏸️ Put on Hold</option>
+                                        <option value="so_cancelled" style="color: #dc3545;">❌ Cancel Sales Order</option>
                                     </select>
-                                    <small style="color: #666; margin-top: 5px; display: block;">
+                                    <small id="statusHelpText" style="color: #666; margin-top: 5px; display: block;">
                                         🤖 Task will be automatically assigned based on stage assignments
                                     </small>
                                 </div>
-                                <div class="form-group">
-                                    <label for="jobRemarks">Remarks (Optional)</label>
-                                    <textarea id="jobRemarks" class="form-control" rows="3" placeholder="Add any remarks or comments..."></textarea>
+                                
+                                <!-- Reason field for Hold/Cancel/Restart -->
+                                <div class="form-group" id="reasonGroup" style="display: none;">
+                                    <label for="statusReason" id="reasonLabel">Reason</label>
+                                    <textarea id="statusReason" class="form-control" rows="3" 
+                                            placeholder="Please provide a reason..." required></textarea>
+                                            <small id="reasonHelpText" style="color: #666; margin-top: 5px; display: block;">
+                                    This reason will be included in the notification email to all users.
+                                </small>
                                 </div>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Update Status & Auto-Assign
+                                
+                                <div class="form-group">
+                                    <label for="jobRemarks">Additional Remarks (Optional)</label>
+                                    <textarea id="jobRemarks" class="form-control" rows="3" 
+                                            placeholder="Add any additional remarks or comments..."></textarea>
+                                </div>
+                                
+                                <!-- Warning for Hold/Cancel/Restart -->
+                                <div id="warningMessage" style="display: none; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                                    <div style="font-weight: 500;">
+                                        <i class="fas fa-exclamation-triangle"></i> 
+                                        <span id="warningText">Warning text will appear here</span>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary" id="submitButton">
+                                    <i class="fas fa-save"></i> <span id="submitButtonText">Update Status & Auto-Assign</span>
                                 </button>
                             </div>
                         </form>
