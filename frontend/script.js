@@ -2760,6 +2760,55 @@ async function downloadTaskDocumentWithFallback(taskId, filename) {
 }
 
 
+function toggleTaskGroup(groupId) {
+    const content = document.getElementById(groupId);
+    const arrow = document.getElementById(groupId + '-arrow');
+
+    if (!content || !arrow) return;
+
+    const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+    if (isExpanded) {
+        // Collapse
+        content.style.maxHeight = '0px';
+        content.style.padding = '0';
+        arrow.style.transform = 'rotate(0deg)';
+    } else {
+        // Expand
+        content.style.maxHeight = content.scrollHeight + 'px';
+        content.style.padding = '15px';
+        arrow.style.transform = 'rotate(180deg)';
+    }
+}
+
+function expandAllGroups() {
+    const contents = document.querySelectorAll('.task-group-content');
+    const arrows = document.querySelectorAll('[id$="-arrow"]');
+
+    contents.forEach(content => {
+        content.style.maxHeight = content.scrollHeight + 'px';
+        content.style.padding = '15px';
+    });
+
+    arrows.forEach(arrow => {
+        arrow.style.transform = 'rotate(180deg)';
+    });
+}
+
+function collapseAllGroups() {
+    const contents = document.querySelectorAll('.task-group-content');
+    const arrows = document.querySelectorAll('[id$="-arrow"]');
+
+    contents.forEach(content => {
+        content.style.maxHeight = '0px';
+        content.style.padding = '0';
+    });
+
+    arrows.forEach(arrow => {
+        arrow.style.transform = 'rotate(0deg)';
+    });
+}
+
 
 function renderUserTasks(tasks) {
     const container = document.getElementById('myTasksContainer');
@@ -2782,45 +2831,163 @@ function renderUserTasks(tasks) {
         tableContainer.style.display = 'none';
     }
 
-    // Group by exact title match
-    const groupedTasks = groupTasksByExactTitle(tasks);
+    // DEBUG: Add debugging
+    const groupedTasks = debugTaskGrouping(tasks);
 
     let html = '';
 
     // Sort groups alphabetically for consistent display
     const sortedGroupNames = Object.keys(groupedTasks).sort();
 
-    sortedGroupNames.forEach(groupName => {
+    sortedGroupNames.forEach((groupName, index) => {
         const groupTasks = groupedTasks[groupName];
+        const groupId = `group-${index}`;
 
-        // Only show group header if there are multiple tasks with the same title
-        if (groupTasks.length > 1) {
-            html += `
-                <div class="task-group" style="margin-bottom: 30px;">
-                    <div class="task-group-header" style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">
-                        <h3 style="margin: 0; color: #667eea; font-size: 1.2rem;">
-                            <i class="fas fa-folder"></i> ${groupName}
-                        </h3>
-                        <small style="color: #888;">${groupTasks.length} identical tasks</small>
+        console.log(`Rendering group: ${groupName} with ${groupTasks.length} tasks`);
+
+        // Always show as grouped, regardless of count
+        html += `
+            <div class="grouped-task-row" style="background: white; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+                <!-- Grouped task header -->
+                <div style="display: flex; align-items: center; padding: 20px; border-left: 4px solid #667eea; background: #f8f9fa;">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 5px 0; color: #333; font-size: 1.2rem; font-weight: 600;">
+                            ${groupName}
+                        </h4>
+                        <small style="color: #666;">
+                            ${groupTasks.length} task${groupTasks.length > 1 ? 's' : ''} • 
+                            ${groupTasks.filter(t => t.status === 'pending').length} pending • 
+                            ${groupTasks.filter(t => t.status === 'in_progress').length} in progress
+                        </small>
                     </div>
-                    <div class="task-group-tasks">
-                        ${groupTasks.map(task => renderSingleUserTask(task)).join('')}
+                    <button class="btn btn-primary" onclick="toggleGroupTasks('${groupId}')" style="padding: 10px 20px; border-radius: 6px; border: none; background: #667eea; color: white; cursor: pointer;">
+                        <i id="${groupId}-icon" class="fas fa-chevron-down" style="margin-right: 8px;"></i>
+                        <span id="${groupId}-text">View ${groupTasks.length} Tasks</span>
+                    </button>
+                </div>
+                
+                <!-- Expandable task list -->
+                <div id="${groupId}" class="group-tasks-details" style="max-height: 0; overflow: hidden; transition: max-height 0.4s ease;">
+                    <div style="background: white;">
+                        ${groupTasks.map((task, taskIndex) => `
+                            <div style="padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 8px;">
+                                        <strong style="color: #333;">Task #${taskIndex + 1}</strong>
+                                        <span style="background: #ffc107; color: #856404; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">
+                                            ${task.status}
+                                        </span>
+                                        <span style="background: #17a2b8; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">
+                                            ${task.priority}
+                                        </span>
+                                        <span style="color: #666; font-size: 0.9rem;">
+                                            📅 ${new Date(task.dueDate).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <div style="color: #666; font-size: 0.9rem;">
+                                        👤 ${task.assignedToName || 'Unassigned'}
+                                    </div>
+                                    ${task.description ? `<div style="color: #555; font-size: 0.9rem; margin-top: 5px;">${task.description}</div>` : ''}
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button onclick="viewTask('${task._id}')" style="background: #6c5ce7; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                                        View
+                                    </button>
+                                    <button onclick="requestTaskCompletion('${task._id}')" style="background: #00b894; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                                        Request Completion
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
-            `;
-        } else {
-            // For single tasks, show them without group header
-            html += `
-                <div class="task-group" style="margin-bottom: 20px;">
-                    <div class="task-group-tasks">
-                        ${renderSingleUserTask(groupTasks[0])}
-                    </div>
-                </div>
-            `;
-        }
+            </div>
+        `;
     });
 
     container.innerHTML = html;
+    console.log('Final HTML length:', html.length);
+}
+
+function toggleGroupTasks(groupId) {
+    const detailsDiv = document.getElementById(groupId);
+    const icon = document.getElementById(groupId + '-icon');
+    const text = document.getElementById(groupId + '-text');
+
+    if (!detailsDiv || !icon || !text) {
+        console.error('Could not find elements for groupId:', groupId);
+        return;
+    }
+
+    const isExpanded = detailsDiv.style.maxHeight && detailsDiv.style.maxHeight !== '0px';
+
+    if (isExpanded) {
+        // Collapse
+        detailsDiv.style.maxHeight = '0px';
+        icon.className = 'fas fa-chevron-down';
+        text.textContent = text.textContent.replace('Hide', 'View');
+    } else {
+        // Expand
+        detailsDiv.style.maxHeight = detailsDiv.scrollHeight + 'px';
+        icon.className = 'fas fa-chevron-up';
+        text.textContent = text.textContent.replace('View', 'Hide');
+    }
+}
+
+function isTaskOverdue(task) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(task.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    return (task.status === 'pending' || task.status === 'in_progress') && dueDate < today;
+}
+
+function getHighestPriority(tasks) {
+    const priorities = ['critical', 'high', 'medium', 'low'];
+    for (let priority of priorities) {
+        if (tasks.some(task => task.priority === priority)) {
+            return priority;
+        }
+    }
+    return 'low';
+}
+
+function getEarliestDueDate(tasks) {
+    return tasks.reduce((earliest, task) => {
+        const taskDate = new Date(task.dueDate);
+        const earliestDate = new Date(earliest);
+        return taskDate < earliestDate ? task.dueDate : earliest;
+    }, tasks[0].dueDate);
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': '#ffc107',
+        'in_progress': '#17a2b8',
+        'completed': '#28a745',
+        'overdue': '#dc3545'
+    };
+    return colors[status] || '#6c757d';
+}
+
+function isDateOverdue(dateString) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const date = new Date(dateString);
+    date.setHours(0, 0, 0, 0);
+    return date < today;
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString();
+}
+
+function getUniqueAssignees(tasks) {
+    const assignees = [...new Set(tasks.map(task => task.assignedToName).filter(Boolean))];
+    if (assignees.length > 2) {
+        return `${assignees.slice(0, 2).join(', ')} +${assignees.length - 2} more`;
+    }
+    return assignees.join(', ') || 'Unassigned';
 }
 
 
@@ -2830,11 +2997,11 @@ function groupTasksByExactTitle(tasks) {
     tasks.forEach(task => {
         let groupName;
 
-        if (task.parentTaskName) {
-            groupName = task.parentTaskName;
-        } else if (task.title) {
-            // Use the exact title as the group name
-            groupName = task.title;
+        // Use parentTaskName if it exists, otherwise use title
+        if (task.parentTaskName && task.parentTaskName.trim()) {
+            groupName = task.parentTaskName.trim();
+        } else if (task.title && task.title.trim()) {
+            groupName = task.title.trim();
         } else {
             groupName = 'Untitled Tasks';
         }
@@ -2876,83 +3043,58 @@ function renderSingleUserTask(task) {
     }
 
     return `
-        <div class="sprint-card priority-${task.priority}" style="${statusColor}">
-            <div class="sprint-header">
-                <div class="sprint-title">${task.title}</div>
-                <div class="sprint-due" style="color: ${isOverdue ? '#dc3545' : 'inherit'};">
-                    Due: ${dateDisplay}
-                </div>
-            </div>
-            <div class="sprint-description">${task.description || 'No description'}</div>
-            
-            ${task.attachedDocument ? `
-                <div style="background: #e8f5e8; padding: 10px; border-radius: 6px; margin: 10px 0;">
-                    <i class="fas fa-paperclip" style="color: #28a745;"></i>
-                    <strong>Document:</strong> ${task.attachedDocument.originalName}
-                    <button onclick="downloadTaskDocument('${task._id}', '${task.attachedDocument.originalName}')" 
-                            style="background: none; border: none; color: #007bff; cursor: pointer; margin-left: 10px;">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                </div>
-            ` : ''}
-            
-            <div style="margin: 10px 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #666;">
-                <span>Created: ${new Date(task.createdAt).toLocaleDateString()}</span>
-                <span class="priority-badge priority-${task.priority}">${task.priority.toUpperCase()}</span>
-            </div>
-            
-            <div class="sprint-progress">
-                <div class="sprint-progress-bar" style="width: ${task.progress || 0}%"></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="status-badge status-${status.replace(' ', '_')}">${status.replace('_', ' ')}</span>
-                <span style="color: #666; font-size: 0.9rem;">${task.progress || 0}% Complete</span>
-            </div>
-            
-            ${task.needsMiddleLevelValidation && task.middleLevelValidationStatus === 'pending' ? `
-                <div style="margin-top: 15px; padding: 10px; background: #e1f5fe; border-radius: 8px; text-align: center;">
-                    <i class="fas fa-user-check" style="color: #0277bd;"></i>
-                    <span style="color: #0277bd; font-weight: 500;">Awaiting Middle Level Validation</span>
-                    <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
-                        Validator: ${task.middleLevelValidatorName}
+        <div class="sprint-card priority-${task.priority}" 
+             style="margin: 15px; 
+                    padding: 20px; 
+                    background: white; 
+                    border-radius: 8px; 
+                    border-left: 4px solid #667eea; 
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    transition: all 0.3s ease;
+                    ${statusColor}">
+            <div class="sprint-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                <div>
+                    <div class="sprint-title" style="font-weight: 600; font-size: 1.1rem; color: #333; margin-bottom: 8px;">
+                        ${task.title}
+                    </div>
+                    <div style="display: flex; gap: 15px; font-size: 0.9rem; color: #666;">
+                        <span><i class="fas fa-user"></i> ${task.assignedToName || 'Unassigned'}</span>
+                        <span><i class="fas fa-calendar"></i> ${dateDisplay}</span>
+                        <span><i class="fas fa-flag priority-${task.priority}"></i> ${task.priority}</span>
                     </div>
                 </div>
-            ` : ''}
+                <span class="status-badge status-${status}" style="padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                    ${status.replace('_', ' ').toUpperCase()}
+                </span>
+            </div>
             
-            ${task.status !== 'completed' && task.status !== 'pending_approval' && task.status !== 'pending_middle_validation' ? `
-                <div style="margin-top: 15px; display: flex; gap: 10px;">
-                    <button class="btn btn-success" onclick="requestTaskCompletion('${task._id}')" style="flex: 1; padding: 10px;">
-                        <i class="fas fa-check-circle"></i> Request Completion
+            ${task.description ? `<div class="sprint-description" style="color: #555; margin-bottom: 15px; line-height: 1.5;">${task.description}</div>` : ''}
+            
+            <div class="sprint-actions" style="display: flex; gap: 10px; padding-top: 15px; border-top: 1px solid #eee;">
+                <button class="btn btn-sm btn-primary" onclick="viewTask('${task._id}')">
+                    <i class="fas fa-eye"></i> View
+                </button>
+                ${task.status !== 'completed' ? `
+                    <button class="btn btn-sm btn-success" onclick="updateTaskStatus('${task._id}', 'in_progress')">
+                        <i class="fas fa-play"></i> Start
                     </button>
-                    <button class="btn btn-warning" onclick="requestTaskDelay('${task._id}')" style="padding: 10px;">
-                        <i class="fas fa-clock"></i> Request Delay
+                ` : ''}
+                ${task.attachedDocument ? `
+                    <button class="btn btn-sm btn-secondary" onclick="downloadDocument('${task._id}', '${task.attachedDocument.filename}')">
+                        <i class="fas fa-download"></i> Download
                     </button>
-                </div>
-            ` : ''}
-            
-            ${task.status === 'pending_approval' ? `
-                <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 8px; text-align: center;">
-                    <i class="fas fa-clock" style="color: #856404;"></i>
-                    <span style="color: #856404; font-weight: 500;">Awaiting Admin Approval</span>
-                </div>
-            ` : ''}
-            
-            ${task.status === 'completed' ? `
-                <div style="margin-top: 15px; padding: 10px; background: #d4edda; border-radius: 8px; text-align: center;">
-                    <i class="fas fa-check-circle" style="color: #155724;"></i>
-                    <span style="color: #155724; font-weight: 500;">
-                        Completed ${task.isOnTime ? 'On Time' : 'Late'}
-                    </span>
-                    ${task.completedAt ? `
-                        <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
-                            ${new Date(task.completedAt).toLocaleString()}
-                        </div>
-                    ` : ''}
-                </div>
-            ` : ''}
+                ` : ''}
+            </div>
         </div>
     `;
 }
+
+
+
+
+
+
+
 function getFilterMessage(statusFilter) {
     const messages = {
         'pending': 'pending tasks',
